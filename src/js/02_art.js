@@ -219,3 +219,17 @@ function findMuzzle(img) {
   } catch (e) { /* 읽기 실패 시 기본값 */ }
   return best || { x: 0.12, y: 0.12 };
 }
+
+const _hot = new WeakMap();
+function hotTint(img) { // 과열된 총: 빨갛게 달아오른 색을 한 번만 만들어 둠
+  let c = _hot.get(img);
+  if (c) return c;
+  c = document.createElement('canvas'); c.width = img.naturalWidth || img.width; c.height = img.naturalHeight || img.height;
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = 'source-atop';
+  const gr = g.createLinearGradient(0, 0, c.width, c.height);
+  gr.addColorStop(0, 'rgba(255,240,120,.9)'); gr.addColorStop(0.35, 'rgba(255,90,30,.85)'); gr.addColorStop(0.62, 'rgba(200,40,20,.35)'); gr.addColorStop(0.78, 'rgba(160,20,20,0)'); // 손(오른쪽 아래)은 그대로
+  g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height);
+  _hot.set(img, c);
+  return c;
+}

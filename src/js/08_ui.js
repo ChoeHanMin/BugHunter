@@ -1,5 +1,5 @@
 // ---------- 화면 · HUD ----------
-const SCREENS = ['#scrTitle', '#scrHow', '#scrPause', '#scrSettings', '#scrRecords', '#scrClear', '#scrCrash', '#scrResult'];
+const SCREENS = ['#scrTitle', '#scrHow', '#scrDiff', '#scrPause', '#scrSettings', '#scrRecords', '#scrClear', '#scrCrash', '#scrResult'];
 const CHALLENGES = [
   ['release', '정식 출시 등급 받기'],
   ['nocrash', '무사고 (크래시 0회로 클리어)'],
@@ -7,6 +7,8 @@ const CHALLENGES = [
   ['acc90', '정확도 90% 이상으로 클리어'],
   ['blast5', '리팩터 한 방에 복제 버그 5마리'],
   ['boss90', '보스를 1분 30초 안에 정상화'],
+  ['hard', '난이도 상 클리어'],
+  ['hardrelease', '난이도 상에서 정식 출시'],
 ];
 const UI = {
   pendingDaily: false, setReturn: null, _hud: {},
@@ -23,6 +25,8 @@ const UI = {
     click('#btnSettings', () => this.showSettings('#scrTitle'));
     click('#btnHowGo', () => this.afterHow());
     click('#btnHowSkip', () => this.afterHow());
+    click('#btnDiffBack', () => this.only('#scrTitle'));
+    $$('.dcard').forEach((b) => b.addEventListener('click', () => { SND.init(); SND.play('click'); Store.set('diff', b.dataset.d); this.only(); Game.newRun(this.pendingDaily, b.dataset.d); }));
     click('#btnResume', () => this.resume());
     click('#btnPauseSet', () => this.showSettings('#scrPause'));
     click('#btnRestartStage', () => { this.only(); Game.state = 'play'; if (SND.ctx) SND.ctx.resume(); Game.restoreSnapshot(); Game.startStage(Game.run.stage); });
@@ -33,7 +37,7 @@ const UI = {
     click('#btnRebuild', () => { this.only(); Game.rebuild(); });
     click('#btnCrashTitle', () => Game.toTitle());
     click('#btnCopy', () => this.copyNote());
-    click('#btnAgain', () => this.start(Game.run && Game.run.daily));
+    click('#btnAgain', () => { this.pendingDaily = !!(Game.run && Game.run.daily); this.only(); Game.newRun(this.pendingDaily, Game.run ? Game.run.diff : 'normal'); });
     click('#btnResTitle', () => Game.toTitle());
     $('#pauseBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); SND.init(); this.pause(); });
     // 설정
@@ -51,7 +55,7 @@ const UI = {
   showTitle() { this.only('#scrTitle'); $('#hud').classList.add('hidden'); this.hint(''); $('#banner').classList.add('hidden'); },
   showHUD() {
     this.only(); $('#hud').classList.remove('hidden');
-    $('#stageLbl').textContent = 'STAGE ' + Game.S.def.id + ' · ' + Game.S.def.name;
+    $('#stageLbl').innerHTML = 'STAGE ' + Game.S.def.id + ' · ' + Game.S.def.name + `<span class="diffchip" style="color:${Game.D.key === 'hard' ? '#FF4D5E' : '#aab2a3'}">${Game.D.name}</span>`;
     $('#helpBadge').classList.toggle('hidden', !Game.run.help[Game.run.stage]);
     this._hud = {};
   },
@@ -60,7 +64,13 @@ const UI = {
     if (!Store.get('seenHow', false)) { this.only('#scrHow'); return; }
     this.afterHow();
   },
-  afterHow() { Store.set('seenHow', true); this.only(); Game.newRun(this.pendingDaily); },
+  afterHow() { Store.set('seenHow', true); this.showDiff(); },
+  showDiff() {
+    $('#diffMode').textContent = this.pendingDaily ? '오늘의 빌드 ' + DAILY_VER : '정식 빌드';
+    const last = Store.get('diff', 'normal');
+    $$('.dcard').forEach((b) => b.classList.toggle('last', b.dataset.d === last));
+    this.only('#scrDiff');
+  },
   pause() {
     if (Game.state !== 'play') return;
     Game.state = 'paused'; Game.ptr.down = false;
@@ -160,6 +170,7 @@ const UI = {
     const v = P(['player', 'world', 'camera', 'ui', 'physics', 'audio', 'render']);
     const msg = {
       basic: `TypeError: ${v}.update is not a function`, clone: `RangeError: ${v} 복제가 너무 많음`, mini: `Warning: 중복된 ${v} 발견`,
+      trojan: `SecurityError: hotfix.exe 는 핫픽스가 아닙니다`,
       ghost: `ReferenceError: ${v} is not defined`, e404: `404 Not Found: /${v}.json`, loop: `RangeError: Maximum call stack size exceeded`,
     }[type] || `Error: ${v} 붕괴`;
     const code = String(Math.floor(r() * 1e6)).padStart(6, '0');
@@ -224,7 +235,7 @@ const UI = {
     if (!r.finalized) { r.score += stabBonus; r.finalized = true; r.stabBonus = stabBonus; }
     const acc = r.st.shots ? r.st.hits / r.st.shots : 0;
     const grade = this.grade(); r.grade = grade;
-    $('#resMode').textContent = r.daily ? '오늘의 빌드 ' + DAILY_VER : '정식 빌드';
+    $('#resMode').textContent = (r.daily ? '오늘의 빌드 ' + DAILY_VER : '정식 빌드') + ' · 난이도 ' + Game.D.name;
     $('#resGrade').textContent = grade;
     const f = r.st.fixed;
     $('#resStats').innerHTML = [
@@ -252,6 +263,8 @@ const UI = {
     earn('acc90', acc >= 0.9);
     earn('blast5', r.st.blastMax >= 5);
     earn('boss90', r.st.bossTime > 0 && r.st.bossTime <= 90);
+    earn('hard', r.diff === 'hard');
+    earn('hardrelease', r.diff === 'hard' && grade === '정식 출시');
     Store.set('records', rec);
     $('#resChal').textContent = got.length ? '🏆 새 도전 과제: ' + got.join(', ') : '';
     this.only('#scrResult');
@@ -286,6 +299,9 @@ const UI = {
     add(true, `총 ${total}개의 버그가 세상에서 사라졌습니다`, 0.8);
     add(st.perfect >= 5, `PERFECT 패치 ${st.perfect}회 — 정밀 디버깅 장인`, 2);
     add(st.hotfix > 0, `핫픽스 ${st.hotfix}개 긴급 배포`, 1.2);
+    add(st.overheat > 0, `패치 건 과열 ${st.overheat}회 — 냉각 팬 교체 예정`, 2.5);
+    add(st.trojan > 0, `트로이 목마 핫픽스 ${st.trojan}개에 속음 (보안팀 호출)`, 3);
+    add(st.dash >= 5, `돌진 버그 ${st.dash}마리와 정면 승부`, 1.5);
     pool.sort((a, b) => b[1] - a[1]);
     for (const p of pool.slice(0, 2)) lines.push(p[0]);
     const known = [];
@@ -294,7 +310,7 @@ const UI = {
     known.push('알려진 문제: 정상화된 메인 루프가 가끔 웃음');
     known.push('알려진 문제: 텍스처 없는 숲이 너무 예뻐짐');
     lines.push(known[0]);
-    return `🐛 버그 헌터 ${ver} 패치 노트 — 등급: ${grade}\n` + lines.map((l) => '• ' + l).join('\n') + `\n점수 ${r.score.toLocaleString()} · #버그헌터`;
+    return `🐛 버그 헌터 ${ver} 패치 노트 — 등급: ${grade} · 난이도 ${Game.D.name}\n` + lines.map((l) => '• ' + l).join('\n') + `\n점수 ${r.score.toLocaleString()} · #버그헌터`;
   },
   copyNote() {
     const text = $('#resNote').textContent;

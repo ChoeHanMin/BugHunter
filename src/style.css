@@ -163,3 +163,14 @@ button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
 @keyframes clpop{0%{opacity:0}50%{opacity:1;transform:translateX(3px)}}
 #hud.flipped #codeLog{margin-left:auto}
 @media (max-width:640px){#codeLog{margin-top:64px;font-size:9.5px}.cl-b{height:calc(7 * 1.45em)}}
+/* 난이도 선택 */
+.diffs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width:560px){.diffs{grid-template-columns:1fr}}
+.dcard{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:14px;background:#151913;border:2px solid #2f342c;box-shadow:3px 3px 0 #000}
+.dcard b{font-family:var(--mono);font-size:30px;line-height:1;color:var(--lime)}
+.dcard .dn{font-weight:800;font-size:15px}
+.dcard .dd{font-size:12px;color:#b9c0b2;line-height:1.45}
+.dcard:hover,.dcard:focus-visible{border-color:var(--lime);outline:none}
+.dcard.last{border-color:#6B6F68}
+.dcard.hard b{color:var(--red)}.dcard.hard:hover,.dcard.hard:focus-visible{border-color:var(--red)}
+.diffchip{display:inline-block;margin-left:6px;padding:0 5px;border:1px solid currentColor;font-size:10px}

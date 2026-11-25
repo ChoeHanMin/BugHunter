@@ -101,6 +101,9 @@ const SND = {
       case 'clear': [0, 4, 7, 12, 16].forEach((s, i) => this.tone(523 * Math.pow(2, s / 12), 0.22, 'square', 0.12, null, now + i * 0.09)); break;
       case 'success': [0, 4, 7, 12, 7, 12, 16, 19, 24].forEach((s, i) => this.tone(392 * Math.pow(2, s / 12), 0.2, i % 2 ? 'triangle' : 'square', 0.13, null, now + i * 0.1)); break;
       case 'phase': this.tone(110, 0.6, 'sawtooth', 0.25, 55); this.noiseHit(0.5, 0.2, 'lowpass', 600); break;
+      case 'overheat': this.noiseHit(1.2, 0.3, 'highpass', 3000); this.tone(900, 0.5, 'sawtooth', 0.12, 120); this.tone(1200, 0.08, 'square', 0.1, null, now + 0.02); break; // 치이익
+      case 'cool': this.tone(1318, 0.1, 'triangle', 0.14); this.tone(1976, 0.18, 'triangle', 0.12, null, now + 0.08); break;
+      case 'jam': this.tone(180, 0.04, 'square', 0.12, 90); this.noiseHit(0.03, 0.1, 'bandpass', 1200); break; // 딸깍(헛방)
       case 'spawn': this.tone(200 + p * 40, 0.05, 'square', 0.05, 400); break;
     }
   },

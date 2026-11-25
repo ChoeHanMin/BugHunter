@@ -47,7 +47,15 @@ class Bug {
     V1.copy(cam.position).addScaledVector(R, this.ox).addScaledVector(U, this.oy);
     const tgt = this.type === 'loop' ? this.center : this.pos;
     V2.subVectors(V1, tgt); const dist = V2.length(); V2.divideScalar(dist || 1);
-    const sp = this.def.spd * this.spdMul * Game.bugSpeedMul;
+    let sp = this.def.spd * this.spdMul * Game.bugSpeedMul;
+    // 돌진 (상): 가까이 오면 갑자기 빨라짐
+    if (Game.D.dash && !this.dashRolled && this.type !== 'loop' && this.age > 0.6) {
+      const dd = this.pos.distanceTo(cam.position);
+      if (dd < 16) { this.dashRolled = true; if (RNG() < Game.D.dash) { this.windT = 0.5; this.dashT = 0; Game.run.st.dash++; SND.play('warn'); } }
+    }
+    // 예고(0.5초 멈춰서 부르르) → 돌진(0.8초 1.9배)
+    if (this.windT > 0) { this.windT -= dt; sp *= 0.1; this.dashT = this.windT <= 0 ? 0.8 : 0.001; this.pos.addScaledVector(R, (Math.random() - 0.5) * 0.12); }
+    else if (this.dashT > 0) { this.dashT -= dt; sp *= 1.9; }
     tgt.addScaledVector(V2, sp * d);
     tgt.addScaledVector(R, Math.cos(this.age * this.wf + this.ph) * this.wa * d);
     tgt.addScaledVector(U, Math.sin(this.age * this.wf * 1.3 + this.ph) * this.wa * 0.5 * d);
@@ -74,7 +82,8 @@ class Bug {
       this.mat.color.setRGB(1, 1, 1).multiplyScalar(this.vuln ? 1.25 : 0.55);
       this.ring.material.opacity = this.vuln ? 0.35 : 1;
     }
-    if (this.flash > 0) this.mat.color.setRGB(1 + this.flash, 1 + this.flash, 1 + this.flash);
+    if (this.dashT > 0) this.mat.color.setRGB(1.7, 0.55, 0.55);
+    else if (this.flash > 0) this.mat.color.setRGB(1 + this.flash, 1 + this.flash, 1 + this.flash);
     else if (this.type !== 'loop') this.mat.color.setRGB(1, 1, 1);
     this.spr.position.copy(this.pos);
     const sq = Math.sin(this.age * 14) * 0.07; // 꿈틀거림
@@ -96,6 +105,7 @@ class Bug {
     this.spr.scale.set(s, s, 1);
     this.mat.rotation = Math.sin(this.age * 3) * 0.25;
     this.mat.opacity = this.age > 4.8 ? (Math.floor(this.age * 10) % 2 ? 0.3 : 1) : 1;
+    if (this.trojan) { const k = Math.sin(this.age * 9) > 0.6; this.mat.color.setRGB(1, k ? 0.55 : 1, k ? 0.55 : 1); } // 트로이 목마: 가끔 붉게
     V3.subVectors(this.pos, Game.camera.position);
     if (this.age > 6.2 || V3.length() < 2 || V3.dot(Game.camF) < 0) this.remove();
   }
@@ -236,13 +246,13 @@ const Boss = {
     const real = this.real();
     const cnt = n === 3 ? 6 : 5;
     const cand = shuffle(real.segs.filter((s) => !s.head && !s.err && !s.fixed), this.r).slice(0, cnt);
-    for (const s of cand) { s.err = true; s.hp = s.maxHp = [0, 3, 4, 5][n]; real.setMode(s, 'err'); }
-    real.speed = [0, 0.3, 0.48, 0.6][n];
+    for (const s of cand) { s.err = true; s.hp = s.maxHp = Math.max(1, [0, 3, 4, 5][n] + Game.D.bossHp); real.setMode(s, 'err'); }
+    real.speed = [0, 0.3, 0.48, 0.6][n] * Game.D.bossSpd;
     if (n === 3) { // 몸이 두 마리로 복제 — 진짜만 오류 줄이 빛남
       const swap = this.r() < 0.5;
       const fake = new Snake(false, swap ? 15 : 7.5, -this.realDir, Math.PI, swap ? 1.6 : -0.6);
       real.R = swap ? 8 : 13;
-      fake.speed = 0.66;
+      fake.speed = 0.66 * Game.D.bossSpd;
       for (const s of shuffle(fake.segs.filter((x) => !x.head), this.r).slice(0, 6)) { s.fake = true; fake.setMode(s, 'fake'); }
       this.snakes.push(fake);
     }
@@ -284,8 +294,8 @@ const Boss = {
     if (this.transT > 0) { this.transT -= dt; if (this.transT <= 0) this.startPhase(this.phase + 1); return; }
     if (this.phase >= 1) {
       this.spawnT -= dt * ws;
-      if (this.spawnT <= 0 && Game.bugs.length < 8) {
-        this.spawnT = [0, 4.5, 2.4, 2.8][this.phase];
+      if (this.spawnT <= 0 && Game.bugs.length < Game.maxOn()) {
+        this.spawnT = [0, 4.5, 2.4, 2.8][this.phase] * Game.D.bossSpawn;
         const head = this.real().segs[0].pos;
         const type = this.phase === 3 && this.r() < 0.4 ? 'clone' : 'basic';
         Game.spawnBugAt(type, head.clone(), {});

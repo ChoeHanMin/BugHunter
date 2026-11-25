@@ -14,6 +14,15 @@ const GLITCH = {
   pix: { name: '픽셀화', dur: 2 },
 };
 const NORMAL_SEED = 20261125;
+// 난이도: 하 / 중 / 상
+const DIFF = {
+  easy: { key: 'easy', name: '하', label: '쉬움', spd: 0.8, dmg: 0.7, count: 0.85, maxOn: 6, glDur: 0.7, maxGl: 2, assist: 12, rb: 3, hotfix: 1, combo: 5,
+    trickle: 0, scatter: false, dash: 0, heat: false, trojan: 0, bossHp: -1, bossSpd: 0.85, bossSpawn: 1.35 },
+  normal: { key: 'normal', name: '중', label: '보통', spd: 1, dmg: 1, count: 1, maxOn: 8, glDur: 1, maxGl: 2, assist: 0, rb: 2, hotfix: 0, combo: 5,
+    trickle: 0, scatter: false, dash: 0, heat: false, trojan: 0, bossHp: 0, bossSpd: 1, bossSpawn: 1 },
+  hard: { key: 'hard', name: '상', label: '어려움', spd: 1.15, dmg: 1.15, count: 1.25, maxOn: 10, glDur: 1.3, maxGl: 3, assist: -6, rb: 1, hotfix: -1, combo: 8,
+    trickle: 3.0, scatter: true, dash: 0.28, heat: true, trojan: 0.4, bossHp: 2, bossSpd: 1.3, bossSpawn: 0.6 },
+};
 const _proj = new THREE.Vector3();
 
 const Game = {
@@ -100,6 +109,10 @@ const Game = {
   // ----- 발사 -----
   fire(initial) {
     if (this.state !== 'play' || !this.S || !this.S.started || this.S.ending) return;
+    if (this.overT > 0) { // 과열 중: 못 쏨
+      if (initial) { SND.play('jam'); this.pop(this.ptr.x, this.ptr.y - 26, '과열!', '#FF8A3D'); }
+      return;
+    }
     const gap = initial ? 0.15 : 0.25;
     let x = this.ptr.x, y = this.ptr.y;
     if (this.hasGlitch('slip')) { x += this.slip.x; y += this.slip.y; }
@@ -108,7 +121,21 @@ const Game = {
     this.lastShot = this.time;
     this.fireSingle(x, y);
   },
-  assist() { return IS_TOUCH ? 48 : 16; },
+  assist() { return Math.max(6, (IS_TOUCH ? 48 : 16) + this.D.assist); },
+  get D() { return DIFF[(this.run && this.run.diff) || 'normal']; },
+  maxOn() { return this.D.maxOn; },
+  addHeat(v) {
+    if (!this.D.heat) return;
+    this.heat = Math.min(100, this.heat + v);
+    if (this.heat >= 100) this.overheat('과열! 2초 냉각');
+  },
+  overheat(msg) {
+    if (this.overT > 0) return;
+    this.overT = 2; this.heat = 100; this.ptr.down = false;
+    this.run.st.overheat++;
+    SND.play('overheat'); UI.toast('🔥 ' + msg);
+    UI.clPush([['del', 'Warning: patchGun.temperature > 100°C'], ['err', '✖ Run Error(0x' + String(Math.floor(Math.random() * 1e6)).padStart(6, '0') + ')']]);
+  },
   findTarget(x, y, assist, exclude) {
     let best = null, bd = 1e9;
     for (const b of this.bugs) {
@@ -173,7 +200,7 @@ const Game = {
   fireSingle(x, y) {
     this.run.st.shots++; this.S.shots++;
     SND.play('shot');
-    this.recoil = 1;
+    this.recoil = 1; this.addHeat(8);
     const g = this.gunPos();
     this.tracers.push({ x0: g.x, y0: g.y, x1: x, y1: y, t: 0, w: 4 });
     const t = this.findTarget(x, y, this.assist());
@@ -183,7 +210,7 @@ const Game = {
     this.perfectShot = false;
   },
   fireSpread(x, y) {
-    this.refT = 3;
+    this.refT = 3; this.addHeat(30);
     this.run.st.shots++; this.S.shots++;
     SND.play('spread');
     this.recoil = 1.6; this.shake = Math.max(this.shake, 0.12);
@@ -228,12 +255,23 @@ const Game = {
     SND.play('split');
     PFX.spark(b.pos, [1, 0.83, 0.3], 14, 6);
     for (const s of [-1, 1]) {
-      const p = b.pos.clone().addScaledVector(this.camR, s * 0.5);
-      this.bugs.push(new Bug('mini', p, { sep: this.camR.clone().multiplyScalar(s * 4), spdMul: b.spdMul, ox: b.ox + s * 0.8, oy: b.oy }));
+      if (this.D.scatter) { // 예상 못 한 곳으로 튐: 화면 양 끝, 위, 거의 옆
+        // 화면 안이지만 엉뚱한 곳: 멀리 반대편, 높은 곳, 화면 가장자리
+        const c = this.camera.position, k = RNG(), f = rnd(15, 22);
+        const p = c.clone().addScaledVector(this.camF, f)
+          .addScaledVector(this.camR, (k < 0.5 ? s : -s) * f * rnd(0.25, 0.55))
+          .addScaledVector(this.camU, k < 0.35 ? f * rnd(0.2, 0.32) : rnd(-1, 1.5));
+        PFX.spark(p, [1, 0.83, 0.3], 10, 4);
+        this.bugs.push(new Bug('mini', p, { spdMul: b.spdMul * 0.75, ox: rnd(-1.4, 1.4), oy: rnd(-0.6, 0.6) }));
+      } else {
+        const p = b.pos.clone().addScaledVector(this.camR, s * 0.5);
+        this.bugs.push(new Bug('mini', p, { sep: this.camR.clone().multiplyScalar(s * 4), spdMul: b.spdMul, ox: b.ox + s * 0.8, oy: b.oy }));
+      }
     }
+    if (this.D.scatter) SND.play('tele');
     this.run.st.fixed.clone++;
     if (!this.S.def.boss) this.S.fixed++; // 보스전 진행률은 오류 줄만
-    this.pop(b.sx, b.sy - 20, '분열!', '#FFD34D');
+    this.pop(b.sx, b.sy - 20, this.D.scatter ? '분열… 어디로?!' : '분열!', '#FFD34D');
     UI.codeFix('clone');
     b.remove();
   },
@@ -247,13 +285,25 @@ const Game = {
   streakUp() {
     this.run.streak++;
     this.run.maxStreak = Math.max(this.run.maxStreak, this.run.streak);
-    if (this.run.streak % 5 === 0) {
+    if (this.run.streak % this.D.combo === 0) {
       SND.play('combo');
       if (this.glitches.length) { const g = this.glitches.shift(); UI.toast('연속 패치! ' + GLITCH[g.type].name + ' 복구'); }
       else UI.toast('연속 패치 ×' + this.run.streak);
     }
   },
   collectHotfix(b) {
+    if (b.trojan) { // 가짜 핫픽스: 버그 3마리가 튀어나옴
+      SND.play('glitch'); PFX.spark(b.pos, [1, 0.3, 0.37], 18, 7);
+      this.pop(b.sx, b.sy - 40, '트로이 목마!', '#FF4D5E');
+      this.run.st.trojan++;
+      for (let i = 0; i < 3; i++) {
+        const p = b.pos.clone().addScaledVector(this.camR, (i - 1) * 1.6).addScaledVector(this.camU, rnd(-0.5, 0.8));
+        this.bugs.push(new Bug('basic', p, { spdMul: 1.15, sep: this.camR.clone().multiplyScalar((i - 1) * 3) }));
+        if (!this.S.def.boss) this.S.expected++;
+      }
+      UI.codeError('trojan');
+      b.remove(); return;
+    }
     const r = this.run, before = r.stab;
     r.stab = Math.min(100, r.stab + 20);
     const fixedGl = this.glitches.length;
@@ -270,6 +320,7 @@ const Game = {
   spawnHotfix() {
     const pos = this.camera.position.clone().addScaledVector(this.camF, 13).addScaledVector(this.camR, (RNG() < 0.5 ? -1 : 1) * rnd(1.5, 4)).addScaledVector(this.camU, rnd(0.8, 2.2));
     const b = this.spawnBugAt('hotfix', pos, {});
+    if (this.D.trojan && this.run.seenHotfix && RNG() < this.D.trojan) b.trojan = true;
     if (!this.run.seenHotfix) { this.run.seenHotfix = true; b.label = '핫픽스'; UI.hint('핫픽스 등장! ' + BUGDEF.hotfix.tip, 4); }
   },
   fixBug(b) {
@@ -291,7 +342,7 @@ const Game = {
     if (!b.alive) return;
     b.remove();
     if (this.state !== 'play') return;
-    this.run.stab = Math.max(0, this.run.stab - b.def.dmg);
+    this.run.stab = Math.max(0, this.run.stab - Math.round(b.def.dmg * this.D.dmg));
     this.run.streak = 0; this.run.st.contacts++;
     FX.u.hit = 1; this.shake = 0.45;
     SND.play('glitch');
@@ -306,9 +357,9 @@ const Game = {
     let tot = 0; for (const k in w) tot += w[k];
     let x = RNG() * tot, type = 'tear';
     for (const k in w) { x -= w[k]; if (x <= 0) { type = k; break; } }
-    if (this.glitches.length >= 2) this.glitches.shift(); // 최대 2개까지만 겹침
+    if (this.glitches.length >= this.D.maxGl) this.glitches.shift(); // 최대 겹침 수 (상: 3개)
     this.glitches = this.glitches.filter((g) => g.type !== type);
-    this.glitches.push({ type, t: GLITCH[type].dur });
+    this.glitches.push({ type, t: GLITCH[type].dur * this.D.glDur });
     this.run.st.glitch[type]++;
     if (type === 'slip') { this.slip.x = (RNG() < 0.5 ? -1 : 1) * rnd(32, 46); this.slip.y = (RNG() < 0.5 ? -1 : 1) * rnd(10, 22); }
   },
@@ -332,14 +383,14 @@ const Game = {
   },
 
   // ----- 진행 -----
-  newRun(daily) {
+  newRun(daily, diff) {
     const seed = daily ? DAILY_SEED : NORMAL_SEED;
     const r = mulberry32(seed ^ 0x9e3779b9);
     const gw = {}; for (const k of Object.keys(GLITCH)) gw[k] = daily ? 0.5 + r() : 1;
     this.run = {
-      daily, seed, stage: 0, score: 0, stab: 100, streak: 0, maxStreak: 0, gw,
+      daily, seed, diff: diff || 'normal', stage: 0, score: 0, stab: 100, streak: 0, maxStreak: 0, gw,
       st: { fixed: { basic: 0, clone: 0, mini: 0, ghost: 0, e404: 0, loop: 0, boss: 0 }, shots: 0, hits: 0, crashes: 0, contacts: 0,
-        glitch: { tear: 0, inv: 0, flip: 0, slip: 0, pix: 0 }, rollbacks: 0, tele: 0, bossTime: 0, blastMax: 0, perfect: 0, hotfix: 0 },
+        glitch: { tear: 0, inv: 0, flip: 0, slip: 0, pix: 0 }, rollbacks: 0, tele: 0, bossTime: 0, blastMax: 0, perfect: 0, hotfix: 0, overheat: 0, trojan: 0, dash: 0 },
       crashStreak: [0, 0, 0, 0, 0], help: [false, false, false, false, false], stageRes: [], snap: null,
     };
     this.weapon = 0;
@@ -355,7 +406,8 @@ const Game = {
   buildSchedule(def, seed) {
     const r = mulberry32(seed + def.id * 7919);
     const list = [];
-    let u = 0.05, n = def.count;
+    // 물리 구역(무한루프·404가 많은 곳)은 수를 늘리지 않음: 상 난이도는 속도·돌진·과열로 어렵게
+    let u = 0.05, n = Math.round(def.count * (def.id === 4 ? Math.min(1, this.D.count) : this.D.count));
     const isFirst = (t) => def.intro.includes(t) && t !== 'basic';
     for (const t of def.intro) { list.push({ u, type: t, intro: true }); u += t === 'basic' ? 0.06 : 0.1; n--; }
     const pool = [];
@@ -371,7 +423,8 @@ const Game = {
       type: t, intro: false,
     }));
     // 핫픽스 아이템
-    const hf = def.id === 1 ? [0.5] : [0.3 + r() * 0.1, 0.6 + r() * 0.08];
+    let hf = def.id === 1 ? [0.5] : [0.3 + r() * 0.1, 0.6 + r() * 0.08];
+    if (this.D.hotfix > 0) hf.push(0.82); else if (this.D.hotfix < 0) hf = hf.slice(0, 1);
     for (const hu of hf) list.push({ u: hu, type: 'hotfix', intro: false });
     list.sort((a, b) => a.u - b.u);
     return list;
@@ -385,11 +438,12 @@ const Game = {
     World.build(def, r.seed);
     this.S = {
       def, idx, u: 0, t: 0, queue: def.boss ? [] : this.buildSchedule(def, r.seed), fixed: 0, shots: 0, hits: 0,
-      expected: 1, started: false, introT: 2.2, ending: false, rb: 2, rush: false, score0: r.score, tutorial: idx === 0, warned: false,
+      expected: 1, started: false, introT: 2.2, ending: false, rb: this.D.rb, rush: false, trickT: 4, jamT: rnd(16, 26), score0: r.score, tutorial: idx === 0, warned: false,
     };
-    if (!def.boss) this.S.expected = def.count + this.S.queue.filter((q) => q.type === 'clone').length * 2;
+    if (!def.boss) this.S.expected = this.S.queue.filter((q) => q.type !== 'hotfix').length + this.S.queue.filter((q) => q.type === 'clone').length * 2;
     else this.S.expected = 16;
-    this.bugSpeedMul = (1 + idx * 0.04) * (r.help[idx] ? 0.85 : 1);
+    this.bugSpeedMul = (1 + idx * 0.04) * (r.help[idx] ? 0.85 : 1) * this.D.spd;
+    this.heat = 0; this.overT = 0; this.smoke = [];
     this.glitches = []; this.rollT = 0; this.ws = 1; this.refT = 0; this.tracers = []; this.pops = [];
     this.shake = 0; this.hitStop = 0; this.recoil = 0;
     this.camSpeed = def.boss ? 0 : World.len / def.dur;
@@ -432,7 +486,7 @@ const Game = {
   },
   spawnFromQueue() {
     const S = this.S;
-    while (S.queue.length && S.queue[0].u <= S.u && this.bugs.length < 8) {
+    while (S.queue.length && S.queue[0].u <= S.u && this.bugs.length < this.maxOn()) {
       const q = S.queue.shift();
       const len = World.len;
       const s2 = Math.min(1, S.u + 34 / len);
@@ -565,6 +619,7 @@ const Game = {
           }
         }
       }
+      if (S.started && !S.ending) this.hardUpdate(dt, ws);
       // 누르고 있으면 연사
       if (this.ptr.down) this.fire(false);
       // 화면 고장 타이머
@@ -620,6 +675,34 @@ const Game = {
       this.clearT += dt;
       FX.u.wipeOn = 1; FX.u.wipe = clamp((this.clearT - 0.3) / 1.6, 0, 1); // 고치기 전/후 슬라이드
       if (this.clearT > 2.4) { FX.u.wipeOn = 0; this.state = 'cleared'; S.idx >= 4 ? UI.showResult() : UI.showClear(); }
+    }
+  },
+  hardUpdate(dt, ws) {
+    const S = this.S, D = this.D;
+    // 끝없이 나오는 버그 (상)
+    if (D.trickle && !S.def.boss && S.u < 0.95) {
+      S.trickT -= dt * ws;
+      if (S.trickT <= 0 && this.bugs.length < this.maxOn()) {
+        S.trickT = D.trickle * rnd(0.7, 1.3);
+        const types = Object.keys(S.def.mix).filter((t) => t !== 'loop'); // 무한루프는 추가 투입 제외
+        const type = pick(types);
+        const s2 = Math.min(1, S.u + rnd(24, 34) / World.len);
+        const P = World.curve.getPointAt(s2), T = World.curve.getTangentAt(s2);
+        const N = new THREE.Vector3(-T.z, 0, T.x).normalize();
+        const pos = P.clone().addScaledVector(N, rnd(-7, 7)); pos.y = S.def.key === 'physics' ? rnd(9, 11) : rnd(1, 5);
+        this.spawnBugAt(type, pos, {});
+        S.expected += type === 'clone' ? 3 : 1;
+      }
+    }
+    // 패치 건 과열 (상)
+    if (D.heat) {
+      if (this.overT > 0) {
+        this.overT -= dt;
+        if (Math.random() < dt * 30) this.smoke.push({ t: 0, x: rnd(-6, 6), vx: rnd(-10, 10), vy: rnd(-50, -30), s: rnd(6, 12) });
+        if (this.overT <= 0) { this.overT = 0; this.heat = 35; SND.play('cool'); UI.toast('냉각 완료!'); }
+      } else this.heat = Math.max(0, this.heat - (this.time - this.lastShot > 0.35 ? 45 : 16) * dt); // 쏘는 중에도 천천히 식음
+      S.jamT -= dt;
+      if (S.jamT <= 0) { S.jamT = rnd(18, 30); this.overheat('갑자기 과열! 2초 냉각'); }
     }
   },
   project() {
@@ -679,8 +762,11 @@ const Game = {
     const fp = this.fpLayout();
     if (fp) {
       g.save(); g.imageSmoothingEnabled = true;
-      if (fp.flip) { g.translate(fp.x + fp.w, fp.y); g.scale(-1, 1); g.drawImage(fp.im, 0, 0, fp.w, fp.h); }
-      else g.drawImage(fp.im, fp.x, fp.y, fp.w, fp.h);
+      if (fp.flip) { g.translate(fp.x + fp.w, fp.y); g.scale(-1, 1); } else g.translate(fp.x, fp.y);
+      const jit = this.overT > 0 ? (Math.random() - 0.5) * 3 : 0;
+      g.drawImage(fp.im, jit, 0, fp.w, fp.h);
+      const hk = this.D.heat ? (this.overT > 0 ? 0.75 : Math.max(0, this.heat - 40) / 60 * 0.5) : 0;
+      if (hk > 0.01) { g.globalAlpha = hk; g.drawImage(hotTint(fp.im), jit, 0, fp.w, fp.h); g.globalAlpha = 1; }
       g.restore();
       if (this.recoil > 0.5) { // 총구 빛
         const m = fp.muzzle, r = fp.w * 0.09 * this.recoil;
@@ -706,6 +792,29 @@ const Game = {
     }
     g.restore();
   },
+  drawHeat(g, dt) {
+    if (!this.D.heat) return;
+    const m = this.gunPos();
+    // 연기
+    for (const p of this.smoke) {
+      p.t += dt; const a = 0.55 * (1 - p.t / 1.2); if (a <= 0) continue;
+      g.fillStyle = `rgba(170,175,165,${a})`;
+      const s = p.s * (1 + p.t * 2.5);
+      g.fillRect(m.x + p.x + p.vx * p.t - s / 2, m.y + p.vy * p.t * 1.6 - s / 2, s, s);
+    }
+    this.smoke = this.smoke.filter((p) => p.t < 1.2);
+    if (this.heat < 4 && this.overT <= 0) return;
+    // 열 게이지
+    const w = 70, h = 7, x = m.x - w / 2, y = m.y - 46;
+    g.fillStyle = 'rgba(10,12,9,.8)'; g.fillRect(x - 2, y - 14, w + 4, h + 18);
+    g.fillStyle = '#2a2f28'; g.fillRect(x, y, w, h);
+    const k = this.heat / 100;
+    g.fillStyle = this.overT > 0 ? (Math.floor(this.time * 8) % 2 ? '#FF4D5E' : '#FF8A3D') : k > 0.7 ? '#FF8A3D' : '#FFD34D';
+    g.fillRect(x, y, w * k, h);
+    g.font = 'bold 10px ui-monospace,Menlo,monospace'; g.textAlign = 'center';
+    g.fillStyle = this.overT > 0 ? '#FF8A3D' : '#cfd6c8';
+    g.fillText(this.overT > 0 ? `과열 ${this.overT.toFixed(1)}s` : 'HEAT', m.x, y - 3);
+  },
   pop(x, y, txt, col) { this.pops.push({ x, y, txt, col, t: 0 }); },
 
   // ----- 2D 오버레이: 조준선·탄 궤적·점수·이름표 -----
@@ -724,7 +833,7 @@ const Game = {
       g.fillStyle = `rgba(230,255,140,${a})`; g.fillRect(t.x1 - 5, t.y1 - 5, 10, 10);
     }
     this.tracers = this.tracers.filter((t) => t.t < 0.12);
-    if (this.state === 'play' || this.state === 'clearing') this.drawGun(g);
+    if (this.state === 'play' || this.state === 'clearing') { this.drawGun(g); this.drawHeat(g, dt); }
     // 404 겹침 게이지
     for (const b of this.bugs) {
       if (b.type === 'e404' && b.hover > 0.05 && b.onScreen) {
@@ -742,6 +851,10 @@ const Game = {
     for (const b of this.bugs) {
       if (!b.alive || b.type === 'hotfix' || b.dist == null) continue;
       const inView = !b.behind && b.sx > 0 && b.sx < W && b.sy > 0 && b.sy < H;
+      if (inView && b.dashT > 0) {
+        g.font = 'bold 20px ui-monospace,Menlo,monospace'; g.textAlign = 'center';
+        g.fillStyle = '#000'; g.fillText('!!', b.sx + 2, b.sy - b.sr - 6); g.fillStyle = '#FF4D5E'; g.fillText('!!', b.sx, b.sy - b.sr - 8);
+      }
       if (inView && b.dist < 7 && (b.type !== 'ghost' || b.vis)) {
         if (!b.warned && this.state === 'play') { b.warned = true; SND.play('warn'); }
         const pulse = 0.5 + 0.5 * Math.sin(this.time * 22);
