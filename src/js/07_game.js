@@ -25,12 +25,19 @@ const GLITCH = {
 const NORMAL_SEED = 20261125;
 // 난이도: 하 / 중 / 상
 const DIFF = {
-  easy: { key: 'easy', name: '하', label: '쉬움', spd: 0.8, dmg: 0.7, count: 0.85, maxOn: 6, glDur: 0.7, maxGl: 2, assist: 10, rb: 3, hotfix: 1, combo: 5,
-    tele: 1.3, fireMul: 1.4, coverHp: 140, trickle: 0, scatter: false, dash: 0, heat: false, trojan: 0, bossHp: -1, bossSpd: 0.85, bossSpawn: 1.35 },
-  normal: { key: 'normal', name: '중', label: '보통', spd: 1, dmg: 1, count: 1, maxOn: 8, glDur: 1, maxGl: 2, assist: 0, rb: 2, hotfix: 0, combo: 5,
-    tele: 1, fireMul: 1, coverHp: 100, trickle: 0, scatter: false, dash: 0, heat: false, trojan: 0, bossHp: 0, bossSpd: 1, bossSpawn: 1 },
+  easy: { key: 'easy', name: '하', label: '쉬움', spd: 0.72, dmg: 0.55, count: 0.8, maxOn: 6, glDur: 0.6, maxGl: 1, assist: 12, rb: 3, hotfix: 1, combo: 4,
+    tele: 1.5, fireMul: 1.7, coverHp: 180, trickle: 0, scatter: false, dash: 0, heat: false, trojan: 0, bossHp: -1, bossSpd: 0.75, bossSpawn: 1.6, bossK: 2.2, helpAt: 1 },
+  normal: { key: 'normal', name: '중', label: '보통', spd: 0.92, dmg: 0.85, count: 0.95, maxOn: 7, glDur: 0.85, maxGl: 2, assist: 4, rb: 2, hotfix: 0, combo: 5,
+    tele: 1.2, fireMul: 1.25, coverHp: 130, trickle: 0, scatter: false, dash: 0, heat: false, trojan: 0, bossHp: 0, bossSpd: 0.9, bossSpawn: 1.25, bossK: 3, helpAt: 2 },
   hard: { key: 'hard', name: '상', label: '어려움', spd: 1.15, dmg: 1.15, count: 1.25, maxOn: 10, glDur: 1.3, maxGl: 3, assist: -6, rb: 1, hotfix: -1, combo: 8,
-    tele: 0.75, fireMul: 0.72, coverHp: 70, trickle: 4.0, scatter: true, dash: 0.28, heat: true, trojan: 0.4, bossHp: 1, bossSpd: 1.3, bossSpawn: 0.6 },
+    tele: 0.75, fireMul: 0.72, coverHp: 70, trickle: 4.0, scatter: true, dash: 0.28, heat: true, trojan: 0.4, bossHp: 1, bossSpd: 1.3, bossSpawn: 0.6, bossK: 4, helpAt: 2 },
+};
+// 약점 무기: 맞는 무기로 쏘면 피해 2배 (산탄은 돌격형을 밀어내고, 저격은 무한루프 껍질을 뚫음)
+const WEAK = { basic: 'shotgun', clone: 'shotgun', mini: 'shotgun', throw: 'sniper', ghost: 'sniper', loop: 'sniper', e404: 'rifle', missile: 'rifle' };
+const KIND_INFO = {
+  rifle: { member: 0, glyph: '연', color: '#C6F432', name: '연사(도트)' },
+  shotgun: { member: 1, glyph: '산', color: '#FFD34D', name: '산탄(렉스)' },
+  sniper: { member: 2, glyph: '저', color: '#6fe7ff', name: '저격(핀)' },
 };
 const _proj = new THREE.Vector3();
 
@@ -208,7 +215,7 @@ const Game = {
     const g = this.gunPos();
     this.tracers.push({ x0: g.x, y0: g.y, x1: x, y1: y, t: 0, w: 3, c: m.d.color });
     const t = this.findTarget(a.x, a.y, r);
-    if (t) { const crit = t instanceof Bug && Math.hypot(t.sx - a.x, t.sy - a.y) < Math.max(8, t.sr * 0.35); if (this.damage(t, m.d.dmg * (crit ? 2 : 1), crit)) { this.run.st.hits++; this.S.hits++; } }
+    if (t) { const crit = t instanceof Bug && Math.hypot(t.sx - a.x, t.sy - a.y) < Math.max(8, t.sr * 0.35); if (this.damage(t, m.d.dmg * (crit ? 2 : 1), crit, false, 'rifle')) { this.run.st.hits++; this.S.hits++; } }
   },
   fireShotgun(m) {
     this.shotCommon(m, m.d.heat);
@@ -223,7 +230,7 @@ const Game = {
       const t = this.findTarget(px, py, 14);
       if (t) {
         const wasClone = t.type === 'clone' || t.type === 'mini';
-        if (this.damage(t, m.d.dmg, false)) { any = true; if (wasClone && !t.alive && !hitSet.has(t)) cloneFix++; hitSet.add(t); }
+        if (this.damage(t, m.d.dmg, false, false, 'shotgun')) { any = true; if (wasClone && !t.alive && !hitSet.has(t)) cloneFix++; hitSet.add(t); }
       }
     }
     if (any) { this.run.st.hits++; this.S.hits++; }
@@ -241,7 +248,7 @@ const Game = {
     // 관통: 조준선 근처의 모든 대상
     const hits = this.targetsNear(a.x, a.y, this.retR() * 0.6);
     let any = false;
-    for (const t of hits) { if (this.damage(t, dmg, full)) any = true; }
+    for (const t of hits) { if (this.damage(t, dmg, full, false, 'sniper')) any = true; }
     if (any) { this.run.st.hits++; this.S.hits++; }
     if (full && any) this.pop(a.x, a.y - 40, '풀차지!', '#6fe7ff');
   },
@@ -294,11 +301,16 @@ const Game = {
     return out;
   },
   // 대상에 피해. 맞았으면 true
-  damage(t, dmg, crit, ally) {
+  damage(t, dmg, crit, ally, kind) {
     if (t instanceof Bug) {
       if (!t.alive) return false;
       if (t.role === 'item') { this.collectHotfix(t); return true; }
-      if (t.type === 'loop' && !t.vuln) {
+      if (kind && WEAK[t.type] === kind) { // 약점 무기
+        dmg *= 2;
+        if (!t.weakShown) { t.weakShown = true; this.pop(t.sx, t.sy - t.sr - 40, '약점! ×2', KIND_INFO[kind].color); this.run.st.weak++; }
+      }
+      if (kind === 'shotgun' && t.role === 'rush') t.pos.addScaledVector(this.camF, 0.45); // 산탄: 밀어냄
+      if (t.type === 'loop' && !t.vuln && kind !== 'sniper') {
         if (!ally) { if (Math.random() < 0.3) SND.play('deflect'); PFX.spark(t.pos, [0.85, 0.7, 1], 3, 3); if (Math.random() < 0.25) this.pop(t.sx, t.sy - 20, '튕김!', '#d9c2ff'); }
         return false;
       }
@@ -312,7 +324,8 @@ const Game = {
       }
       return true;
     }
-    // 보스 코드 줄
+    // 보스 코드 줄 (저격이 약점)
+    if (kind === 'sniper') dmg *= 2;
     const res = Boss.hit(t, dmg);
     if (res === 'dmg') { if (!ally && Math.random() < 0.4) SND.play('tick'); PFX.spark(t.pos, [1, 0.5, 0.5], 2, 3); this.run.score += 5; return true; }
     if (res) {
@@ -402,7 +415,7 @@ const Game = {
     const pos = this.camera.position.clone().addScaledVector(this.camF, 13).addScaledVector(this.camR, (RNG() < 0.5 ? -1 : 1) * rnd(1.5, 3.5)).addScaledVector(this.camU, rnd(1, 2.4));
     const b = this.spawnBugAt('hotfix', pos, {});
     if (this.D.trojan && this.run.seenHotfix && RNG() < this.D.trojan) b.trojan = true;
-    if (!this.run.seenHotfix) { this.run.seenHotfix = true; b.label = '핫픽스'; UI.hint('핫픽스 등장! ' + BUGDEF.hotfix.tip, 4); }
+    if (!this.run.seenHotfix) { this.run.seenHotfix = true; b.label = '핫픽스'; }
   },
   fixBug(b) {
     const perfect = this.perfectShot;
@@ -427,12 +440,12 @@ const Game = {
     const dur = 1.05 * this.D.tele;
     this.attacks.push({ x: this.W * rnd(0.3, 0.7), y: this.H * rnd(0.36, 0.62), t: 0, dur, src, dmg: (src.def ? src.def.dmg : 11) });
     SND.play('aim');
-    if (!this.seen.packet) { this.seen.packet = true; UI.hint(IS_TOUCH ? '빨간 원 = 공격 예고! 손을 떼서 숨으세요' : '빨간 원 = 공격 예고! 마우스를 떼서 숨으세요', 4); }
+    UI.tutor('hide');
   },
   spawnMissile(pos) {
     const b = this.spawnBugAt('missile', pos, { ox: rnd(-1, 1) });
     SND.play('missile');
-    if (!this.seen.missile) { this.seen.missile = true; b.label = '관통 미사일'; UI.hint('관통 미사일! 숨어도 맞아요 — 쏴서 떨어뜨리세요', 4); }
+    if (!this.seen.missile) { this.seen.missile = true; b.label = '관통 미사일'; }
     return b;
   },
   updateAttacks(dt, ws) {
@@ -455,7 +468,7 @@ const Game = {
     this.pop(this.W / 2 + rnd(-60, 60), this.H * 0.72, '막음!', '#cfd6c8');
     if (c.hp <= 0 && !c.broken) {
       c.hp = 0; c.broken = true; SND.play('crash');
-      UI.toast('엄폐물 파괴! 이제 숨어도 맞아요');
+      UI.toast('엄폐물 파괴! 이제 숨어도 맞아요'); UI.tutor('cover_broken');
       UI.clPush([['del', 'Error: cover.integrity = 0'], ['err', '✖ Run Error(0x' + String(Math.floor(Math.random() * 1e6)).padStart(6, '0') + ')']]);
     }
   },
@@ -468,7 +481,7 @@ const Game = {
   },
   hurt(dmg, kind, type) {
     if (this.state !== 'play') return;
-    this.run.stab = Math.max(0, this.run.stab - Math.round(dmg * this.D.dmg));
+    this.run.stab = Math.max(0, this.run.stab - Math.round(dmg * this.dmgK));
     this.run.streak = 0; this.run.st.contacts++;
     FX.u.hit = 1; this.shake = kind === 'packet' ? 0.3 : 0.45;
     SND.play('glitch');
@@ -516,7 +529,7 @@ const Game = {
     this.run.st.crashes++;
     const i = this.run.stage;
     this.run.crashStreak[i]++;
-    if (this.run.crashStreak[i] >= 2) this.run.help[i] = true;
+    if (this.run.crashStreak[i] >= this.D.helpAt) this.run.help[i] = true;
     MUS.crashStop(); SND.play('crash');
     this.ptr.down = false; this.out = false;
   },
@@ -529,7 +542,7 @@ const Game = {
     this.run = {
       daily, seed, diff: diff || 'normal', stage: 0, score: 0, stab: 100, streak: 0, maxStreak: 0, gw,
       st: { fixed: { basic: 0, clone: 0, mini: 0, ghost: 0, e404: 0, loop: 0, throw: 0, boss: 0 }, shots: 0, hits: 0, crashes: 0, contacts: 0,
-        glitch: { tear: 0, inv: 0, flip: 0, slip: 0, pix: 0 }, rollbacks: 0, tele: 0, bossTime: 0, blastMax: 0, perfect: 0, hotfix: 0, overheat: 0, trojan: 0, dash: 0, blocked: 0, missiles: 0 },
+        glitch: { tear: 0, inv: 0, flip: 0, slip: 0, pix: 0 }, rollbacks: 0, tele: 0, bossTime: 0, blastMax: 0, perfect: 0, hotfix: 0, overheat: 0, trojan: 0, dash: 0, blocked: 0, missiles: 0, weak: 0 },
       crashStreak: [0, 0, 0, 0, 0], help: [false, false, false, false, false], stageRes: [], snap: null,
     };
     this.weapon = 0; this.seen = {};
@@ -591,11 +604,15 @@ const Game = {
       this.S.expected = e;
       this.loadWave();
     } else this.S.expected = 16;
-    this.bugSpeedMul = (1 + idx * 0.04) * (r.help[idx] ? 0.85 : 1) * this.D.spd;
+    const help = r.help[idx];
+    this.bugSpeedMul = (1 + idx * 0.03) * (help ? 0.8 : 1) * this.D.spd;
+    this.fm = this.D.fireMul * (help ? 1.35 : 1); // 적 공격 간격
+    this.dmgK = this.D.dmg * (help ? 0.8 : 1);
     this.heat = 0; this.overT = 0; this.smoke = [];
     this.glitches = []; this.rollT = 0; this.ws = 1; this.tracers = []; this.pops = []; this.attacks = [];
     this.shake = 0; this.hitStop = 0; this.recoil = 0; this.out = false; this.outK = 0;
-    this.cover = { hp: this.D.coverHp, max: this.D.coverHp, broken: false };
+    const cmax = Math.round(this.D.coverHp * (help ? 1.4 : 1));
+    this.cover = { hp: cmax, max: cmax, broken: false };
     this.coverMat.color.set(def.cover); this.coverTopMat.color.set(def.theme).multiplyScalar(0.55);
     this.resetSquad();
     if (!this.memberUnlocked(this.weapon)) this.weapon = 0;
@@ -612,9 +629,15 @@ const Game = {
     if (def.join) {
       const m = SQUAD[def.join];
       setTimeout(() => { SND.play('unlock'); UI.toast(`${m.name}(${m.role}) 합류! ${m.label}` + (def.join === 2 ? ' · 롤백 해금' : '')); }, 900);
-      UI.hint(def.join === 1 ? '렉스 합류: 아래 아이콘(또는 2번)으로 산탄 캐릭터로 바꿀 수 있어요. 나머지는 알아서 쏴요' : '핀 합류: 누르고 있으면 충전, 떼면 관통 저격! · 롤백(스페이스)', 6);
-    } else if (idx === 0) UI.hint(IS_TOUCH ? '화면을 누르고 있으면 엄폐물에서 나와 사격! 끌어서 조준, 떼면 숨어요' : '마우스 왼쪽을 누르고 있으면 나와서 사격! 떼면 숨어서 재장전', 0);
-    else if (r.help[idx]) UI.hint('도움 모드: 이 스테이지 버그 속도 -15%', 3);
+    }
+    if (help) UI.hint('도움 모드: 버그 속도 -20% · 적 공격 느리게 · 피해 -20% · 엄폐물 +40%', 4);
+  },
+  stageTutor() {
+    const def = this.S.def;
+    if (this.S.idx === 0) UI.tutor('basics');
+    if (def.join === 1) UI.tutor('join_rex');
+    if (def.join === 2) { UI.tutor('join_pin'); UI.tutor('rollback'); }
+    if (this.S.idx === 0 || def.join) UI.tutor('weak');
   },
   loadWave() {
     const S = this.S, c = S.covers[S.ci];
@@ -634,7 +657,9 @@ const Game = {
   spawnBugAt(type, pos, opt) {
     const b = new Bug(type, pos, Object.assign({ spdMul: 1 }, opt));
     this.bugs.push(b);
-    if (opt.intro) { b.label = BUGDEF[type].name; if (BUGDEF[type].tip) UI.hint('새 버그: ' + BUGDEF[type].name + ' — ' + BUGDEF[type].tip, 4); }
+    if (opt.intro) b.label = BUGDEF[type].name;
+    UI.dexSeen(type);
+    UI.tutor('bug_' + type, b); // 처음 만나는 버그: 화면 멈추고 설명
     if (type !== 'missile') SND.play('spawn', this.bugs.length);
     return b;
   },
@@ -779,6 +804,7 @@ const Game = {
       this.fpsAcc += dt; this.fpsN++;
       if (this.fpsAcc > 2.5) { if (this.fpsAcc / this.fpsN > 1 / 40) FX.stepDown(); this.fpsAcc = 0; this.fpsN = 0; }
     }
+    if (this.state === 'tutor') { FX.render(this.scene, this.camera, this.time); this.draw2D(0); return; }
     if (this.state === 'title') { this.updateTitle(dt); World.update(dt, 0); }
     else if (this.state === 'play' || this.state === 'crashing' || this.state === 'clearing') this.update(dt);
     if (this.state !== 'paused') {
@@ -803,7 +829,7 @@ const Game = {
     this.outK += ((this.out ? 1 : 0) - this.outK) * Math.min(1, dt * 14);
 
     if (this.state === 'play') {
-      if (!S.started) { S.introT -= dt; if (S.introT <= 0) S.started = true; }
+      if (!S.started) { S.introT -= dt; if (S.introT <= 0) { S.started = true; this.stageTutor(); } }
       else {
         S.t += dt;
         this.updateWaves(dt, ws);
@@ -811,6 +837,8 @@ const Game = {
       }
       this.updateFiring(dt);
       this.allyFire(dt);
+      this.sugT = (this.sugT || 0) - dt;
+      if (this.sugT <= 0) { this.sugT = 0.4; this.updateSuggest(); }
       this.updateAttacks(dt, ws);
       // 보스전: 숨어 있으면 엄폐물이 천천히 복구
       if (S.def.boss && !this.out && !this.cover.broken) this.cover.hp = Math.min(this.cover.max, this.cover.hp + dt * 2.5);
@@ -872,6 +900,20 @@ const Game = {
       FX.u.wipeOn = 1; FX.u.wipe = clamp((this.clearT - 0.3) / 1.6, 0, 1);
       if (this.clearT > 2.4) { FX.u.wipeOn = 0; this.state = 'cleared'; S.idx >= 4 ? UI.showResult() : UI.showClear(); }
     }
+  },
+  // 지금 화면의 버그에 맞는 캐릭터 버튼을 깜빡여 알려 줌
+  updateSuggest() {
+    const w = { rifle: 0, shotgun: 0, sniper: 0 };
+    for (const b of this.bugs) {
+      if (!b.alive || !b.hostile || !b.onScreen) continue;
+      const k = WEAK[b.type]; if (!k) continue;
+      w[k] += b.role === 'missile' ? 3 : b.role === 'rush' ? (b.dist < 12 ? 2 : 1) : b.type === 'loop' ? 3 : 1.5;
+    }
+    if (this.S.def.boss) w.sniper += 3;
+    let best = 'rifle'; for (const k in w) if (w[k] > w[best]) best = k;
+    const mi = KIND_INFO[best].member, cur = this.member().d.kind;
+    this.suggest = (w[best] >= 3 && mi !== this.weapon && this.memberUnlocked(mi) && w[best] > w[cur] * 1.5) ? mi : -1;
+    this.suggestRb = this.unlocked(2) && this.S.rb > 0 && this.rollT <= 0 && (this.run.stab < 45 || this.cover.broken || this.attacks.length >= 2);
   },
   hardUpdate(dt) {
     if (!this.D.heat) return;
@@ -1029,7 +1071,7 @@ const Game = {
   draw2D(dt) {
     const g = this.g2, W = this.W, H = this.H;
     g.clearRect(0, 0, W, H);
-    const inGame = this.state === 'play' || this.state === 'crashing' || this.state === 'clearing';
+    const inGame = this.state === 'play' || this.state === 'crashing' || this.state === 'clearing' || this.state === 'tutor';
     if (!inGame) { this.tracers = []; this.pops = []; return; }
     const mono = 'ui-monospace,Menlo,monospace';
     this.drawCoverImg(g);
@@ -1065,6 +1107,12 @@ const Game = {
       if (b.type === 'e404' && b.hover > 0.05) {
         g.strokeStyle = '#FF8A3D'; g.lineWidth = 3; g.beginPath();
         g.arc(b.sx, b.sy, b.sr + 10, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, b.hover)); g.stroke();
+      }
+      if (b.hostile && WEAK[b.type] && (b.type !== 'ghost' || b.vis)) { // 약점 무기 표시
+        const ki = KIND_INFO[WEAK[b.type]], x = b.sx + b.sr * 0.75, y = b.sy - b.sr * 0.75;
+        g.fillStyle = '#10140c'; g.beginPath(); g.arc(x, y, 9, 0, 6.283); g.fill();
+        g.strokeStyle = ki.color; g.lineWidth = 2; g.stroke();
+        g.font = 'bold 10px sans-serif'; g.textAlign = 'center'; g.fillStyle = ki.color; g.fillText(ki.glyph, x, y + 3.5);
       }
       if (b.hostile && b.maxHp > 1 && b.hp < b.maxHp && (b.type !== 'ghost' || b.vis)) {
         const w = Math.max(24, b.sr * 1.4); g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(b.sx - w / 2, b.sy - b.sr - 10, w, 4);
@@ -1124,6 +1172,10 @@ const Game = {
     }
     this.pops = this.pops.filter((p) => p.t < 0.8);
     if (this.state === 'play') this.drawReticle(g);
+    if (this.tutorTarget && this.tutorTarget.alive && this.tutorTarget.onScreen) { // 안내 중인 버그 강조
+      const b = this.tutorTarget; g.strokeStyle = '#FFD34D'; g.lineWidth = 3; g.setLineDash([6, 5]);
+      g.beginPath(); g.arc(b.sx, b.sy, b.sr + 14, 0, 6.283); g.stroke(); g.setLineDash([]);
+    }
     this.drawCoverBar(g);
     if (this.rollT > 0) {
       g.font = `bold 18px ${mono}`; g.textAlign = 'center'; g.fillStyle = '#6fe7ff';

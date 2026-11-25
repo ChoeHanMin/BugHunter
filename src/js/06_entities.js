@@ -63,7 +63,7 @@ class Bug {
         tgt.lerp(V1, Math.min(1, d * 2));
         if (Game.canEnemiesAct()) {
           this.fireT -= d;
-          if (this.fireT <= 0) { this.fireT = rnd(this.def.fire[0], this.def.fire[1]) * Game.D.fireMul; Game.enemyAttack(this); }
+          if (this.fireT <= 0) { this.fireT = rnd(this.def.fire[0], this.def.fire[1]) * Game.fm; Game.enemyAttack(this); }
         }
       }
     } else {
@@ -271,7 +271,7 @@ const Boss = {
     const real = this.real();
     const cnt = n === 3 ? 6 : 5;
     const cand = shuffle(real.segs.filter((s) => !s.head && !s.err && !s.fixed), this.r).slice(0, cnt);
-    for (const s of cand) { s.err = true; s.hp = s.maxHp = Math.max(4, ([0, 3, 4, 5][n] + Game.D.bossHp) * 4); real.setMode(s, 'err'); }
+    for (const s of cand) { s.err = true; s.hp = s.maxHp = Math.max(4, Math.round(([0, 3, 4, 5][n] + Game.D.bossHp) * Game.D.bossK)); real.setMode(s, 'err'); }
     real.speed = [0, 0.3, 0.48, 0.6][n] * Game.D.bossSpd;
     if (n === 3) { // 몸이 두 마리로 복제 — 진짜만 오류 줄이 빛남
       const swap = this.r() < 0.5;
@@ -321,10 +321,10 @@ const Boss = {
     // 머리에서 에러 패킷(예고 후, 숨으면 막힘) · 2단계부터 관통 미사일
     if (Game.canEnemiesAct()) {
       this.atkT -= dt * ws;
-      if (this.atkT <= 0) { this.atkT = [0, 3.6, 2.9, 2.4][this.phase] * Game.D.fireMul; Game.enemyAttack(this.real().segs[0]); }
+      if (this.atkT <= 0) { this.atkT = [0, 3.6, 2.9, 2.4][this.phase] * Game.fm; Game.enemyAttack(this.real().segs[0]); }
       if (this.phase >= 2) {
         this.misT -= dt * ws;
-        if (this.misT <= 0 && Game.bugs.length < Game.maxOn()) { this.misT = (this.phase === 2 ? 8 : 6.5) * Game.D.fireMul; Game.spawnMissile(this.real().segs[0].pos.clone()); }
+        if (this.misT <= 0 && Game.bugs.length < Game.maxOn()) { this.misT = (this.phase === 2 ? 8 : 6.5) * Game.fm; Game.spawnMissile(this.real().segs[0].pos.clone()); }
       }
     }
     if (this.phase >= 1) {

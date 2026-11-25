@@ -36,7 +36,7 @@
       <button class="mem sel" data-m="0"><b class="k">1</b><canvas class="pt" width="64" height="64"></canvas><span class="mn">도트</span><span class="mr">연사</span><i class="am"><i></i></i><em class="lock">🔒</em></button>
       <button class="mem" data-m="1"><b class="k">2</b><canvas class="pt" width="64" height="64"></canvas><span class="mn">렉스</span><span class="mr">산탄</span><i class="am"><i></i></i><em class="lock">🔒</em></button>
       <button class="mem" data-m="2"><b class="k">3</b><canvas class="pt" width="64" height="64"></canvas><span class="mn">핀</span><span class="mr">저격</span><i class="am"><i></i></i><em class="lock">🔒</em></button>
-      <button class="wpn rb" data-w="2"><b class="k">␣</b><span class="ic">◀◀</span><span class="nm">롤백 <span id="rbCount">2</span></span><em class="lock">🔒</em></button>
+      <button class="wpn rb" data-w="2"><b class="k">␣</b><span class="ic">◀◀</span><span class="nm">롤백 <span id="rbCount">2</span></span><span class="sub">3초 슬로우</span><em class="lock">🔒</em></button>
     </div>
   </div>
 
@@ -52,6 +52,7 @@
       <button class="btn pri" id="btnStart">게임 시작</button>
       <button class="btn" id="btnDaily">오늘의 빌드</button>
       <div class="row2">
+        <button class="btn sm" id="btnDex">도감</button>
         <button class="btn sm" id="btnRecords">기록</button>
         <button class="btn sm" id="btnSettings">설정</button>
       </div>
@@ -93,6 +94,7 @@
     <div class="panel">
       <h2>일시정지</h2>
       <button class="btn pri" id="btnResume">계속하기</button>
+      <button class="btn" id="btnPauseDex">도감</button>
       <button class="btn" id="btnPauseSet">설정</button>
       <button class="btn" id="btnRestartStage">이 스테이지 다시</button>
       <button class="btn ghost" id="btnToTitle">타이틀로</button>
@@ -110,6 +112,7 @@
       <label class="opt"><span>화질</span>
         <select id="setQuality"><option value="auto">자동</option><option value="high">높음</option><option value="low">낮음</option></select>
       </label>
+      <button class="btn sm" id="btnTutReset">안내 카드 다시 보기</button>
       <button class="btn pri" id="btnSetBack">닫기</button>
     </div>
   </section>
@@ -163,6 +166,34 @@
       <div class="newch" id="resChal"></div>
     </div>
   </section>
+
+  <!-- 도감 -->
+  <section id="scrDex" class="scr dim hidden">
+    <div class="panel wide">
+      <h2>도감</h2>
+      <div id="dexBody"></div>
+      <button class="btn pri" id="btnDexBack">닫기</button>
+    </div>
+  </section>
+
+  <!-- 안내 카드: 전투를 멈추고 짧게 설명 -->
+  <div id="tutor" class="hidden" role="dialog" aria-live="polite">
+    <div class="tcard">
+      <div class="tpic"></div>
+      <div class="ttag"></div>
+      <div class="tt"></div>
+      <div class="tb"></div>
+      <div class="tw"></div>
+      <div class="tgo">탭해서 계속 ▶</div>
+    </div>
+  </div>
+
+  <!-- 폰 가로 화면 안내 -->
+  <div id="rotate" class="hidden">
+    <div class="ri">📱↻</div>
+    <b>세로로 돌려 주세요</b>
+    <p>폰에서는 세로 화면에 맞춰져 있어요.<br>가로 큰 화면은 PC에서 즐겨 주세요.</p>
+  </div>
 
   <div id="toast" class="hidden"></div>
 </div>

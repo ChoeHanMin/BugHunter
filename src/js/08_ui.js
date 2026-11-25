@@ -1,5 +1,5 @@
 // ---------- 화면 · HUD ----------
-const SCREENS = ['#scrTitle', '#scrHow', '#scrDiff', '#scrPause', '#scrSettings', '#scrRecords', '#scrClear', '#scrCrash', '#scrResult'];
+const SCREENS = ['#scrTitle', '#scrHow', '#scrDiff', '#scrDex', '#scrPause', '#scrSettings', '#scrRecords', '#scrClear', '#scrCrash', '#scrResult'];
 const CHALLENGES = [
   ['release', '정식 출시 등급 받기'],
   ['nocrash', '무사고 (크래시 0회로 클리어)'],
@@ -10,6 +10,39 @@ const CHALLENGES = [
   ['hard', '난이도 상 클리어'],
   ['hardrelease', '난이도 상에서 정식 출시'],
 ];
+// ---------- 도감 · 안내 카드 내용 ----------
+const DEX = [
+  { t: 'basic', role: '돌격', hp: 5, desc: '엄폐물까지 곧장 달려와 물어요. 숨어도 막을 수 없어요.', tip: '가까이 오기 전에 쏘세요. 산탄이 약점이고 맞으면 뒤로 밀려나요.' },
+  { t: 'throw', role: '사격', hp: 8, desc: '멀리 서서 빨간 예고 원을 띄운 뒤 에러 패킷을 던져요.', tip: '예고 원이 보이면 손을 떼서 숨으세요. 예고 초반에 잡으면 공격이 취소돼요. 저격이 약점.' },
+  { t: 'clone', role: '돌격', hp: 6, desc: '쓰러뜨리면 작은 복제 버그 2마리로 갈라져요.', tip: '산탄 한 방에 여러 마리를 정리하세요. 분열한 뒤가 더 위험해요.' },
+  { t: 'mini', role: '돌격', hp: 2, desc: '복제 버그가 갈라져 나온 작고 빠른 버그.', tip: '빠르니 가까이 오기 전에 산탄으로.' },
+  { t: 'ghost', role: '사격', hp: 6, desc: '1.5초마다 0.5초만 보여요. 안 보일 땐 맞지 않아요.', tip: '보이는 순간을 노리세요. 저격을 충전해 뒀다가 보일 때 발사하면 한 방이에요.' },
+  { t: 'e404', role: '사격', hp: 8, desc: '조준선이 1초 이상 겹치면 근처로 순간이동해요.', tip: '오래 겨누지 말고 연사로 빠르게 끝내세요. 연사가 약점.' },
+  { t: 'loop', role: '사격 · 미사일', hp: 10, desc: '빙글빙글 돌며 관통 미사일을 쏴요. 껍질 때문에 빛나는 지점에서만 맞아요.', tip: '저격은 껍질을 뚫어서 언제든 맞아요. 미사일은 숨어도 맞으니 쏴서 떨어뜨리세요.' },
+  { t: 'missile', role: '관통탄', hp: 2, desc: '무한루프 버그와 보스가 쏘는 미사일. 엄폐물을 뚫어요.', tip: '숨지 말고 연사로 격추하세요. 보라색 "관통!" 표시가 경고예요.' },
+  { t: 'hotfix', role: '아이템', hp: 1, desc: '가끔 둥실 떠다니는 긴급 패치 꾸러미.', tip: '쏘면 안정성 +20, 화면 고장 복구, 엄폐물 보강. 상 난이도에선 가짜(붉게 깜빡임)도 있어요.' },
+];
+const SQUAD_INFO = [
+  { name: '도트', role: '디버거 · 연사', desc: '빠르게 연속 사격. 어떤 상황에도 무난하고 미사일 격추에 좋아요.', weak: '404 버그 · 관통 미사일' },
+  { name: '렉스', role: '리팩터 · 산탄', desc: '한 번에 7발을 넓게 퍼뜨리고, 달려오는 버그를 뒤로 밀어내요.', weak: '기본 · 복제 · 작은 복제 버그' },
+  { name: '핀', role: '프로파일러 · 저격', desc: '누르고 있으면 충전, 떼거나 다 차면 발사. 멀리 있는 적과 겹쳐 있는 적을 한 번에 꿰뚫어요.', weak: 'throw · 투명 · 무한루프 버그 · 보스 오류 줄' },
+];
+function dexPic(t) {
+  if (t === 'hotfix') return ASSETS.item_hotfix ? Object.assign(new Image(), { src: ASSETS.item_hotfix }) : hotfixCanvas(0);
+  if (t === 'missile') return ASSETS.proj_missile ? Object.assign(new Image(), { src: ASSETS.proj_missile }) : missileCanvas(0);
+  return bugImgCanvas(t);
+}
+const weakTag = (t) => { const k = WEAK[t]; return k ? `<span class="chip" style="color:${KIND_INFO[k].color}">약점: ${KIND_INFO[k].name}</span>` : ''; };
+const TUT = {
+  basics: { tag: '조작', title: '누르면 나가서 쏘고, 떼면 숨어요', body: IS_TOUCH ? '화면을 누르고 있으면 엄폐물 위로 나와 자동 사격해요. 누른 채로 손가락을 끌면 조준점이 움직여요.<br>손을 떼면 숨고, 숨어 있는 동안 재장전돼요.' : '마우스 왼쪽 버튼을 누르고 있으면 엄폐물 위로 나와 자동 사격해요. 조준점은 마우스를 따라가요.<br>버튼을 떼면 숨고, 숨어 있는 동안 재장전돼요.' },
+  hide: { tag: '공격 예고', title: '빨간 원이 보이면 숨으세요!', body: '멀리 있는 버그가 에러 패킷을 던지기 직전이에요. 원이 다 채워지기 전에 <b>손을 떼면</b> 엄폐물이 대신 맞아요.<br>그 전에 던진 버그를 잡으면 공격이 취소돼요.' },
+  weak: { tag: '약점 무기', title: '버그 옆 동그라미 = 약점 무기', body: '<b style="color:#C6F432">연</b> 연사 · <b style="color:#FFD34D">산</b> 산탄 · <b style="color:#6fe7ff">저</b> 저격. 약점 무기로 쏘면 피해가 <b>2배</b>예요.<br>지금 상황에 맞는 캐릭터 버튼이 반짝이면 눌러서 바꾸세요.' },
+  join_rex: { tag: '분대 합류', title: '렉스 합류 — 산탄', body: '한 번에 7발이 넓게 퍼지고, 달려오는 버그를 <b>뒤로 밀어내요</b>. 기본·복제 버그의 약점이에요.<br>아래 렉스 아이콘을 누르세요' + (IS_TOUCH ? '.' : ' (2번 키).') + ' 조작하지 않는 동료는 옆에서 알아서 쏴요.', pics: [1] },
+  join_pin: { tag: '분대 합류', title: '핀 합류 — 저격', body: '<b>누르고 있으면 충전</b>되고, 떼거나 다 차면 발사돼요. 겹친 적을 꿰뚫고, 무한루프 버그의 껍질도 뚫어요.<br>멀리서 던지는 버그와 보스 오류 줄의 약점이에요' + (IS_TOUCH ? '.' : ' (3번 키).'), pics: [2] },
+  rollback: { tag: '분대 스킬', title: '롤백 — 3초 슬로우', body: '누르면 3초 동안 세상이 30% 속도로 느려지고, 날아오던 공격은 되감기고, 화면 고장 하나가 바로 고쳐져요.<br>스테이지마다 정해진 횟수만 쓸 수 있어요. 위급할 때 버튼이 반짝여요' + (IS_TOUCH ? '.' : ' (스페이스).') },
+  cover_broken: { tag: '위험', title: '엄폐물이 부서졌어요', body: '이제 숨어도 에러 패킷에 맞아요. 던지는 버그부터 빨리 잡으세요.<br>다음 엄폐 지점에 가면 새 엄폐물이 생기고, 핫픽스를 쏘면 보강돼요.' },
+};
+
 const UI = {
   pendingDaily: false, setReturn: null, _hud: {},
   init() {
@@ -22,6 +55,15 @@ const UI = {
     click('#btnStart', () => this.start(false));
     click('#btnDaily', () => this.start(true));
     click('#btnRecords', () => this.showRecords());
+    click('#btnDex', () => this.showDex('#scrTitle'));
+    click('#btnPauseDex', () => this.showDex('#scrPause'));
+    click('#btnDexBack', () => this.only(this.dexReturn || '#scrTitle'));
+    click('#btnTutReset', () => { Store.set('tut', []); this.tutSeen = []; this.toast('안내 카드를 처음부터 다시 보여 줄게요'); });
+    $('#tutor').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.tutorClose(); });
+    window.addEventListener('keydown', (e) => { if (Game.state === 'tutor' && (e.code === 'Space' || e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); this.tutorClose(); } }, true);
+    window.addEventListener('resize', () => this.checkRotate());
+    window.addEventListener('orientationchange', () => setTimeout(() => this.checkRotate(), 200));
+    this.checkRotate();
     click('#btnSettings', () => this.showSettings('#scrTitle'));
     click('#btnHowGo', () => this.afterHow());
     click('#btnHowSkip', () => this.afterHow());
@@ -76,6 +118,86 @@ const UI = {
   // 상 난이도 잠금: 중(또는 상)을 한 번 깨면 열림. 저장이 막힌 환경에서는 이번 접속 동안만 기억
   hardOpenMem: false,
   hardOpen() { return this.hardOpenMem || !!Store.get('records', {}).hardOpen; },
+  // ----- 폰 가로 화면: 세로로 돌려 달라고 안내 -----
+  checkRotate() {
+    const land = IS_TOUCH && window.innerWidth > window.innerHeight && window.innerHeight < 600;
+    $('#rotate').classList.toggle('hidden', !land);
+    if (land && Game.state === 'play') this.pause();
+  },
+  // ----- 도감 -----
+  dexSeen(t) {
+    const d = Store.get('dex', []);
+    if (!d.includes(t)) { d.push(t); Store.set('dex', d); }
+    this._dexMem = this._dexMem || new Set(); this._dexMem.add(t);
+  },
+  showDex(ret) {
+    this.dexReturn = ret;
+    const seen = new Set([...(Store.get('dex', [])), ...(this._dexMem || [])]);
+    const body = $('#dexBody'); body.innerHTML = '';
+    const h1 = document.createElement('div'); h1.className = 'dexh'; h1.textContent = '분대'; body.append(h1);
+    const sq = document.createElement('div'); sq.className = 'dex'; body.append(sq);
+    SQUAD_INFO.forEach((m, i) => {
+      const el = document.createElement('div'); el.className = 'dx';
+      const c = document.createElement('canvas'); c.width = c.height = 64;
+      const im = IMG.portrait[i], dr = () => { const g = c.getContext('2d'); g.imageSmoothingEnabled = im instanceof HTMLImageElement; g.drawImage(im, 0, 0, 64, 64); };
+      if (im instanceof HTMLImageElement && !im.complete) im.onload = dr; else dr();
+      el.append(c);
+      el.insertAdjacentHTML('beforeend', `<div class="dn">${m.name}</div><div class="dr">${m.role}</div><div class="dd">${m.desc}</div><div class="dt">약점 대상: ${m.weak}</div>`);
+      sq.append(el);
+    });
+    const rbx = document.createElement('div'); rbx.className = 'dx';
+    rbx.innerHTML = `<div style="grid-row:1/5;width:64px;height:64px;display:flex;align-items:center;justify-content:center;font-size:26px;color:#6fe7ff">◀◀</div><div class="dn">롤백</div><div class="dr">분대 스킬 · 스테이지 3부터</div><div class="dd">3초 동안 세상이 30% 속도로 느려지고, 날아오던 공격은 되감기고, 화면 고장 하나가 바로 고쳐져요.</div><div class="dt">위급할 때 버튼이 반짝여요.</div>`;
+    sq.append(rbx);
+    const h2 = document.createElement('div'); h2.className = 'dexh'; h2.textContent = `버그 (${DEX.filter((x) => seen.has(x.t)).length}/${DEX.length})`; body.append(h2);
+    const grid = document.createElement('div'); grid.className = 'dex'; body.append(grid);
+    for (const e of DEX) {
+      const ok = seen.has(e.t), el = document.createElement('div'); el.className = 'dx' + (ok ? '' : ' locked');
+      el.append(dexPic(e.t));
+      const name = BUGDEF[e.t].name;
+      el.insertAdjacentHTML('beforeend', ok
+        ? `<div class="dn">${name}${weakTag(e.t)}</div><div class="dr">${e.role} · 체력 ${e.hp}</div><div class="dd">${e.desc}</div><div class="dt">공략: ${e.tip}</div>`
+        : `<div class="dn">???</div><div class="dr">아직 만나지 않았어요</div><div class="dd">게임에서 처음 만나면 기록돼요.</div>`);
+      grid.append(el);
+    }
+    this.only('#scrDex');
+  },
+  // ----- 안내 카드: 처음 한 번, 전투를 멈추고 설명 -----
+  tutSeen: null, tutQ: [],
+  tutor(key, target) {
+    if (!this.tutSeen) this.tutSeen = Store.get('tut', []);
+    if (this.tutSeen.includes(key) || this.tutQ.some((q) => q.key === key)) return;
+    let card;
+    if (key.startsWith('bug_')) {
+      const t = key.slice(4), e = DEX.find((x) => x.t === t); if (!e) return;
+      card = { tag: '새로운 버그 · ' + e.role, title: BUGDEF[t].name, body: e.desc, weak: `공략: ${e.tip}`, pic: t };
+    } else card = TUT[key];
+    if (!card) return;
+    this.tutQ.push({ key, card, target });
+    if (Game.state === 'play') this.tutorShow();
+  },
+  tutorShow() {
+    const q = this.tutQ[0]; if (!q) return;
+    const c = q.card, el = $('#tutor');
+    const pic = el.querySelector('.tpic'); pic.innerHTML = '';
+    if (c.pic) pic.append(dexPic(c.pic));
+    if (c.pics) c.pics.forEach((i) => { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const im = IMG.portrait[i]; const g = cv.getContext('2d'); g.imageSmoothingEnabled = im instanceof HTMLImageElement; try { g.drawImage(im, 0, 0, 64, 64); } catch (e) {} pic.append(cv); });
+    el.querySelector('.ttag').textContent = c.tag;
+    el.querySelector('.tt').textContent = c.title;
+    el.querySelector('.tb').innerHTML = c.body;
+    el.querySelector('.tw').innerHTML = c.weak ? c.weak + (c.pic ? ' ' + weakTag(c.pic) : '') : '';
+    el.classList.remove('hidden');
+    Game.state = 'tutor'; Game.ptr.down = false; Game.tutorTarget = q.target || null;
+    this.tutOpenT = performance.now();
+    SND.play('click');
+  },
+  tutorClose() {
+    if (Game.state !== 'tutor' || performance.now() - this.tutOpenT < 350) return; // 실수로 바로 닫히지 않게
+    const q = this.tutQ.shift();
+    if (q) { this.tutSeen.push(q.key); Store.set('tut', this.tutSeen); }
+    $('#tutor').classList.add('hidden');
+    Game.state = 'play'; Game.last = performance.now(); Game.tutorTarget = null;
+    if (this.tutQ.length) setTimeout(() => { if (Game.state === 'play') this.tutorShow(); }, 120);
+  },
   showDiff() {
     const open = this.hardOpen(), hc = $('.dcard.hard');
     hc.classList.toggle('locked', !open);
@@ -145,6 +267,10 @@ const UI = {
       $('#rbCount').textContent = '×' + S.rb;
       rb.classList.toggle('empty', S.rb <= 0);
       rb.classList.toggle('on', Game.rollT > 0);
+    });
+    set('sug', Game.suggest + '|' + !!Game.suggestRb, () => {
+      $$('.mem').forEach((b) => b.classList.toggle('suggest', +b.dataset.m === Game.suggest));
+      $('.wpn.rb').classList.toggle('suggest', !!Game.suggestRb);
     });
     // 탄약 막대
     Game.squad.forEach((q, i) => {
@@ -323,6 +449,7 @@ const UI = {
     add(true, `총 ${total}개의 버그가 세상에서 사라졌습니다`, 0.8);
     add(st.perfect >= 5, `PERFECT 패치 ${st.perfect}회 — 정밀 디버깅 장인`, 2);
     add(st.hotfix > 0, `핫픽스 ${st.hotfix}개 긴급 배포`, 1.2);
+    add(st.weak >= 8, `약점 무기로 ${st.weak}마리 공략 — 분대 운용 만점`, 2);
     add(st.blocked >= 10, `엄폐물로 에러 패킷 ${st.blocked}개 방어 — 숨기 장인`, 2.2);
     add(st.missiles > 0, `관통 미사일 ${st.missiles}발 격추`, 1.8);
     add(st.overheat > 0, `패치 건 과열 ${st.overheat}회 — 냉각 팬 교체 예정`, 2.5);
