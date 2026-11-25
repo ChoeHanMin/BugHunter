@@ -529,7 +529,9 @@ const Game = {
     this.run.st.crashes++;
     const i = this.run.stage;
     this.run.crashStreak[i]++;
-    if (this.run.crashStreak[i] >= this.D.helpAt) this.run.help[i] = true;
+    const boss = this.S && this.S.def.boss;
+    if (this.run.crashStreak[i] >= (boss ? 1 : this.D.helpAt)) this.run.help[i] = true; // 보스방은 1번만 크래시해도 도움 모드
+    if (boss) this.run.bossCk = Math.max(this.run.bossCk || 1, Boss.phase); // 보스 체크포인트
     MUS.crashStop(); SND.play('crash');
     this.ptr.down = false; this.out = false;
   },
@@ -618,7 +620,7 @@ const Game = {
     if (!this.memberUnlocked(this.weapon)) this.weapon = 0;
     this.ret.x = this.W / 2; this.ret.y = this.H * 0.42;
     FX.u.tear = FX.u.inv = FX.u.pix = FX.u.hit = FX.u.slow = 0; FX.u.wipeOn = 0;
-    if (def.boss) { this.camera.position.set(0, 1.2, 24); this.look.set(0, 5, 0); Boss.start(r.seed); }
+    if (def.boss) { this.camera.position.set(0, 1.2, 24); this.look.set(0, 5, 0); Boss.start(r.seed, r.bossCk || 1); this.S.fixed = Boss.fixed; if ((r.bossCk || 1) > 1) UI.toast('체크포인트: 보스 ' + r.bossCk + '단계부터'); }
     else { const P = World.curve.getPointAt(this.S.u), T = World.curve.getTangentAt(this.S.u); this.camera.position.set(P.x, 1.1, P.z); this.look.copy(P).addScaledVector(T, 10); this.look.y = 1.9; }
     this.camera.lookAt(this.look);
     this.state = 'play';

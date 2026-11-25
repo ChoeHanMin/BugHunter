@@ -256,13 +256,19 @@ class Snake {
 }
 const Boss = {
   snakes: [], phase: 0, fixed: 0, total: 16, spawnT: 0, ending: false, endT: 0, transT: 0, t: 0, r: null,
-  start(seed) {
+  start(seed, from = 1) {
     this.dispose();
     this.r = mulberry32(seed + 555);
     this.phase = 0; this.fixed = 0; this.ending = false; this.endT = 0; this.t = 0; this.spawnT = 2; this.atkT = 3; this.misT = 7;
     this.realDir = this.r() < 0.5 ? 1 : -1;
     this.snakes = [new Snake(true, 11, this.realDir, 0, 0)];
-    this.startPhase(1);
+    // 체크포인트: 이미 깬 단계의 오류 줄은 고쳐진 상태로 시작
+    for (let p = 1; p < from; p++) {
+      const real = this.real(), cnt = p === 3 ? 6 : 5;
+      for (const s of shuffle(real.segs.filter((x) => !x.head && !x.fixed), this.r).slice(0, cnt)) { s.fixed = true; real.setMode(s, 'fixed'); }
+      this.fixed += cnt;
+    }
+    this.startPhase(from);
   },
   dispose() { for (const s of this.snakes) s.dispose(); this.snakes = []; },
   real() { return this.snakes[0]; },

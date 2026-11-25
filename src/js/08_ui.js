@@ -362,8 +362,8 @@ const UI = {
       `ERR_TOO_MANY_BUGS  (0xB06${r.stage + 1}${r.st.crashes % 10})\n` +
       `at stage${r.stage + 1}.${STAGES[r.stage].key}()\n` +
       `at bugHunter.patch(stability = 0%)\n\n` +
-      `> 이 스테이지 처음부터 다시 빌드합니다. 판 전체는 유지돼요.` +
-      (help ? `\n> 연속 크래시 감지: 도움 모드 ON (버그 속도 -15%)` : '');
+      (STAGES[r.stage].boss && (r.bossCk || 1) > 1 ? `> 체크포인트: 보스 ${r.bossCk}단계부터 다시 빌드합니다.` : `> 이 스테이지 처음부터 다시 빌드합니다. 판 전체는 유지돼요.`) +
+      (help ? `\n> 도움 모드 ON: 버그 속도 -20% · 적 공격 느리게 · 피해 -20% · 엄폐물 +40%` : '');
     this.only('#scrCrash');
   },
   grade() {
