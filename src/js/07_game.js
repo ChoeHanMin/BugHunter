@@ -28,7 +28,7 @@ const DIFF = {
   easy: { key: 'easy', name: '하', label: '쉬움', spd: 0.72, dmg: 0.55, count: 0.8, maxOn: 6, glDur: 0.6, maxGl: 1, assist: 12, rb: 3, hotfix: 1, combo: 4,
     tele: 1.5, fireMul: 1.7, coverHp: 180, trickle: 0, scatter: false, dash: 0, heat: false, trojan: 0, bossHp: -1, bossSpd: 0.75, bossSpawn: 1.6, bossK: 2.2, helpAt: 1 },
   normal: { key: 'normal', name: '중', label: '보통', spd: 0.92, dmg: 0.85, count: 0.95, maxOn: 7, glDur: 0.85, maxGl: 2, assist: 4, rb: 2, hotfix: 0, combo: 5,
-    tele: 1.2, fireMul: 1.25, coverHp: 130, trickle: 0, scatter: false, dash: 0, heat: false, trojan: 0, bossHp: 0, bossSpd: 0.9, bossSpawn: 1.25, bossK: 3, helpAt: 2 },
+    tele: 1.2, fireMul: 1.25, coverHp: 130, trickle: 0, scatter: false, dash: 0, heat: false, trojan: 0, bossHp: 0, bossSpd: 0.9, bossSpawn: 1.25, bossK: 3.5, helpAt: 2 },
   hard: { key: 'hard', name: '상', label: '어려움', spd: 1.15, dmg: 1.15, count: 1.25, maxOn: 10, glDur: 1.3, maxGl: 3, assist: -6, rb: 1, hotfix: -1, combo: 8,
     tele: 0.75, fireMul: 0.72, coverHp: 70, trickle: 4.0, scatter: true, dash: 0.28, heat: true, trojan: 0.4, bossHp: 1, bossSpd: 1.3, bossSpawn: 0.6, bossK: 4, helpAt: 2 },
 };
