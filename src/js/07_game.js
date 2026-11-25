@@ -812,6 +812,8 @@ const Game = {
       this.updateFiring(dt);
       this.allyFire(dt);
       this.updateAttacks(dt, ws);
+      // 보스전: 숨어 있으면 엄폐물이 천천히 복구
+      if (S.def.boss && !this.out && !this.cover.broken) this.cover.hp = Math.min(this.cover.max, this.cover.hp + dt * 2.5);
       for (const g of this.glitches) g.t -= dt;
       this.glitches = this.glitches.filter((g) => g.t > 0);
     }
