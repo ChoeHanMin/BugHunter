@@ -52,7 +52,11 @@ const SND = {
     switch (name) {
       case 'shot': this.tone(1400, 0.06, 'square', 0.12, 700); break; // 짧은 삑
       case 'spread': this.tone(900, 0.12, 'sawtooth', 0.14, 300); this.noiseHit(0.08, 0.15, 'highpass', 3000); break;
-      case 'hit': this.tone(1568, 0.18, 'triangle', 0.26); this.tone(2093, 0.22, 'sine', 0.16, null, now + 0.05); break; // 맑은 띵
+      case 'hit': { const m = 1 + Math.min(p, 20) * 0.035; this.tone(1568 * m, 0.18, 'triangle', 0.26); this.tone(2093 * m, 0.22, 'sine', 0.16, null, now + 0.05); break; } // 맑은 띵 (연속일수록 음이 올라감)
+      case 'perfect': this.tone(3136, 0.16, 'sine', 0.14, null, now + 0.04); this.tone(4186, 0.2, 'sine', 0.1, null, now + 0.1); break;
+      case 'warn': this.tone(880, 0.06, 'square', 0.07); this.tone(660, 0.06, 'square', 0.07, null, now + 0.08); break;
+      case 'pickup': [0, 4, 7, 12, 16, 19].forEach((s, i) => this.tone(659 * Math.pow(2, s / 12), 0.1, 'triangle', 0.14, null, now + i * 0.045)); break;
+      case 'rush': this.tone(220, 0.25, 'sawtooth', 0.2, 440); this.tone(330, 0.25, 'sawtooth', 0.15, 660, now + 0.25); this.noiseHit(0.3, 0.15, 'bandpass', 900, now + 0.1); break;
       case 'split': for (let i = 0; i < 3; i++) this.noiseHit(0.05, 0.25, 'bandpass', 2500 + i * 900, now + i * 0.04); this.tone(600, 0.1, 'square', 0.1, 1200); break; // 지직
       case 'tele': this.tone(300, 0.14, 'sine', 0.3, 1800); this.tone(1800, 0.08, 'sine', 0.12, 2600, now + 0.12); break; // 뿅
       case 'glitch': this.noiseHit(0.35, 0.35, 'bandpass', 1200); this.tone(120, 0.3, 'sawtooth', 0.18, 60); break; // 잡음

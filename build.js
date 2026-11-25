@@ -11,7 +11,7 @@ const src = (p) => fs.readFileSync(path.join(__dirname, 'src', p), 'utf8');
 const ASSET_SPEC = {
   bug_basic: { size: 96 }, bug_clone: { size: 96 }, bug_mini: { size: 96 },
   bug_ghost: { size: 96 }, bug_404: { size: 96 }, bug_loop: { size: 96 },
-  logo: { width: 900 },
+  logo: { width: 900 }, item_hotfix: { size: 96 }, gun: { width: 512 },
 };
 
 async function loadAssets() {

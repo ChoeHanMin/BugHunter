@@ -127,19 +127,31 @@ const Game = {
     }
     return best;
   },
-  gunPos() { return { x: this.W / 2 + (this.hudFlipped ? -1 : 1) * this.W * 0.12, y: this.H + 10 }; },
+  gunPivot() { return { x: this.W * (this.hudFlipped ? 0.2 : 0.8), y: this.H + Math.min(this.W, this.H) * 0.04 }; },
+  gunLen() { return Math.min(Math.max(this.W, this.H) * 0.2, Math.min(this.W, this.H) * 0.42); },
+  aimPoint() { return this.ptr.has ? { x: this.ptr.x, y: this.ptr.y } : { x: this.W / 2, y: this.H / 2 }; },
+  gunPos() { // 총구 위치
+    const p = this.gunPivot(), a = this.aimPoint();
+    const ang = Math.atan2(a.y - p.y, a.x - p.x), L = this.gunLen() * (0.72 - this.recoil * 0.08);
+    return { x: p.x + Math.cos(ang) * L, y: p.y + Math.sin(ang) * L };
+  },
   fireSingle(x, y) {
     this.run.st.shots++; this.S.shots++;
     SND.play('shot');
+    this.recoil = 1;
     const g = this.gunPos();
     this.tracers.push({ x0: g.x, y0: g.y, x1: x, y1: y, t: 0, w: 4 });
     const t = this.findTarget(x, y, this.assist());
+    // 한가운데를 맞히면 PERFECT
+    this.perfectShot = !!t && t instanceof Bug && t.type !== 'hotfix' && Math.hypot(t.sx - x, t.sy - y) < Math.max(10, t.sr * 0.4);
     if (t && this.hitTarget(t)) { this.run.st.hits++; this.S.hits++; }
+    this.perfectShot = false;
   },
   fireSpread(x, y) {
     this.refT = 3;
     this.run.st.shots++; this.S.shots++;
     SND.play('spread');
+    this.recoil = 1.6; this.shake = Math.max(this.shake, 0.12);
     const g = this.gunPos();
     const hitSet = new Set(); let any = false, cloneFix = 0;
     const span = Math.min(this.W, this.H) * 0.07;
@@ -158,6 +170,7 @@ const Game = {
   },
   hitTarget(t) {
     if (t instanceof Bug) {
+      if (t.type === 'hotfix') { this.collectHotfix(t); return true; }
       if (t.type === 'loop' && !t.vuln) { SND.play('deflect'); PFX.spark(t.pos, [0.85, 0.7, 1], 6, 4); this.pop(t.sx, t.sy - 20, '튕김!', '#d9c2ff'); return false; }
       if (t.type === 'clone') { this.split(t); return true; }
       this.fixBug(t); return true;
@@ -166,7 +179,8 @@ const Game = {
     const res = Boss.hit(t);
     if (res === 'dmg') { SND.play('shot'); PFX.spark(t.pos, [1, 0.5, 0.5], 6, 3); this.addScore(30, t.sx, t.sy); return true; }
     if (res) {
-      PFX.fix(t.pos, [1, 0.3, 0.37], 1.6); SND.play('hit');
+      PFX.fix(t.pos, [1, 0.3, 0.37], 1.6); SND.play('hit', this.run.streak);
+      this.shake = Math.max(this.shake, 0.18); this.hitStop = 0.06;
       this.addScore(400, t.sx, t.sy); this.run.st.fixed.boss++; this.S.fixed++; this.streakUp();
       World.colorizeNear(t.pos, 3);
       return true;
@@ -202,10 +216,31 @@ const Game = {
       else UI.toast('연속 패치 ×' + this.run.streak);
     }
   },
+  collectHotfix(b) {
+    const r = this.run, before = r.stab;
+    r.stab = Math.min(100, r.stab + 20);
+    const fixedGl = this.glitches.length;
+    this.glitches = [];
+    SND.play('pickup');
+    PFX.fix(b.pos, [0.78, 0.96, 0.2], 1.3);
+    r.st.hotfix++;
+    if (r.stab - before < 5) this.addScore(500, b.sx, b.sy);
+    this.pop(b.sx, b.sy - 46, r.stab > before ? `핫픽스! 안정성 +${Math.round(r.stab - before)}` : '핫픽스! 보너스', '#E6FF7A');
+    if (fixedGl) UI.toast('핫픽스 적용 — 화면 고장 모두 복구');
+    b.remove();
+  },
+  spawnHotfix() {
+    const pos = this.camera.position.clone().addScaledVector(this.camF, 13).addScaledVector(this.camR, (RNG() < 0.5 ? -1 : 1) * rnd(1.5, 4)).addScaledVector(this.camU, rnd(0.8, 2.2));
+    const b = this.spawnBugAt('hotfix', pos, {});
+    if (!this.run.seenHotfix) { this.run.seenHotfix = true; b.label = '핫픽스'; UI.hint('핫픽스 등장! ' + BUGDEF.hotfix.tip, 4); }
+  },
   fixBug(b) {
-    SND.play('hit');
+    const perfect = this.perfectShot;
+    SND.play('hit', this.run.streak);
+    if (perfect) { SND.play('perfect'); this.run.st.perfect++; this.pop(b.sx, b.sy - b.sr - 28, 'PERFECT', '#FFD34D'); this.hitStop = 0.05; }
+    this.shake = Math.max(this.shake, perfect ? 0.1 : 0.05);
     PFX.fix(b.pos, b.type === 'ghost' ? [0.75, 0.96, 1] : b.type === 'clone' || b.type === 'mini' ? [1, 0.83, 0.3] : [1, 0.3, 0.37], b.type === 'mini' ? 0.7 : 1);
-    this.addScore(b.def.pts, b.sx, b.sy);
+    this.addScore(b.def.pts * (perfect ? 1.5 : 1), b.sx, b.sy);
     this.run.st.fixed[b.type]++;
     this.S.fixed++;
     this.streakUp();
@@ -219,7 +254,7 @@ const Game = {
     if (this.state !== 'play') return;
     this.run.stab = Math.max(0, this.run.stab - b.def.dmg);
     this.run.streak = 0; this.run.st.contacts++;
-    FX.u.hit = 1;
+    FX.u.hit = 1; this.shake = 0.45;
     SND.play('glitch');
     this.addGlitch();
     if (!this.S.warned && this.run.stage === 0) { this.S.warned = true; UI.hint('버그에 닿으면 안정성이 깎이고 화면이 고장 나요!', 3); }
@@ -264,7 +299,7 @@ const Game = {
     this.run = {
       daily, seed, stage: 0, score: 0, stab: 100, streak: 0, maxStreak: 0, gw,
       st: { fixed: { basic: 0, clone: 0, mini: 0, ghost: 0, e404: 0, loop: 0, boss: 0 }, shots: 0, hits: 0, crashes: 0, contacts: 0,
-        glitch: { tear: 0, inv: 0, flip: 0, slip: 0, pix: 0 }, rollbacks: 0, tele: 0, bossTime: 0, blastMax: 0 },
+        glitch: { tear: 0, inv: 0, flip: 0, slip: 0, pix: 0 }, rollbacks: 0, tele: 0, bossTime: 0, blastMax: 0, perfect: 0, hotfix: 0 },
       crashStreak: [0, 0, 0, 0, 0], help: [false, false, false, false, false], stageRes: [], snap: null,
     };
     this.weapon = 0;
@@ -289,8 +324,15 @@ const Game = {
     while (pool.length < n) pool.push('basic');
     pool.length = n;
     shuffle(pool, r); // 오늘의 빌드 시드로 순서만 섞음
-    const u0 = u + 0.02, span = 0.86 - u0;
-    pool.forEach((t, i) => list.push({ u: u0 + span * (i + 0.5 + (r() - 0.5) * 0.7) / n, type: t, intro: false }));
+    const u0 = u + 0.02, k = Math.round(n * 0.3), m = n - k;
+    pool.forEach((t, i) => list.push({
+      u: i < m ? u0 + (0.66 - u0) * (i + 0.5 + (r() - 0.5) * 0.7) / m // 평소
+        : 0.73 + 0.14 * (i - m + 0.5 + (r() - 0.5) * 0.6) / k, // BUG RUSH 구간
+      type: t, intro: false,
+    }));
+    // 핫픽스 아이템
+    const hf = def.id === 1 ? [0.5] : [0.3 + r() * 0.1, 0.6 + r() * 0.08];
+    for (const hu of hf) list.push({ u: hu, type: 'hotfix', intro: false });
     list.sort((a, b) => a.u - b.u);
     return list;
   },
@@ -303,12 +345,14 @@ const Game = {
     World.build(def, r.seed);
     this.S = {
       def, idx, u: 0, t: 0, queue: def.boss ? [] : this.buildSchedule(def, r.seed), fixed: 0, shots: 0, hits: 0,
-      expected: 1, started: false, introT: 2.2, ending: false, rb: 2, score0: r.score, tutorial: idx === 0, warned: false,
+      expected: 1, started: false, introT: 2.2, ending: false, rb: 2, rush: false, score0: r.score, tutorial: idx === 0, warned: false,
     };
     if (!def.boss) this.S.expected = def.count + this.S.queue.filter((q) => q.type === 'clone').length * 2;
     else this.S.expected = 16;
     this.bugSpeedMul = (1 + idx * 0.04) * (r.help[idx] ? 0.85 : 1);
     this.glitches = []; this.rollT = 0; this.ws = 1; this.refT = 0; this.tracers = []; this.pops = [];
+    this.shake = 0; this.hitStop = 0; this.recoil = 0;
+    this.camSpeed = def.boss ? 0 : World.len / def.dur;
     FX.u.tear = FX.u.inv = FX.u.pix = FX.u.hit = FX.u.slow = 0; FX.u.wipeOn = 0;
     if (!this.unlocked(this.weapon)) this.weapon = 0;
     if (def.boss) {
@@ -355,6 +399,7 @@ const Game = {
       const N = new THREE.Vector3(-T.z, 0, T.x).normalize();
       const pos = P.clone().addScaledVector(N, rnd(-5, 5));
       pos.y = S.def.key === 'physics' ? rnd(9, 11) : rnd(1.2, 4.5); // 물리 구역: 천장에서 떨어짐
+      if (q.type === 'hotfix') { this.spawnHotfix(); continue; }
       this.spawnBugAt(q.type, pos, { intro: q.intro });
     }
   },
@@ -461,7 +506,9 @@ const Game = {
     if (this.rollT > 0) { this.rollT -= dt; if (this.rollT <= 0) { this.rollT = 0; MUS.slow = false; } }
     const wsT = this.rollT > 0 ? 0.3 : 1;
     this.ws += (wsT - this.ws) * Math.min(1, dt * 8);
-    const ws = this.state === 'crashing' ? 0.15 : this.ws;
+    let ws = this.state === 'crashing' ? 0.15 : this.ws;
+    if (this.hitStop > 0) { this.hitStop -= dt; ws *= 0.12; }
+    this.recoil = Math.max(0, this.recoil - dt * 9);
     if (this.refT > 0) this.refT -= dt;
 
     if (this.state === 'play') {
@@ -471,7 +518,10 @@ const Game = {
         if (!S.def.boss) {
           S.u = Math.min(1, S.u + (dt * ws) / S.def.dur);
           this.spawnFromQueue();
-          if (S.u >= 1 && !S.queue.length && !this.bugs.length) this.stageClear();
+          if (S.u >= 1 && !S.queue.some((q) => q.type !== 'hotfix') && !this.bugs.some((b) => b.type !== 'hotfix')) this.stageClear();
+          if (!S.rush && S.u >= 0.7) { // 클라이맥스
+            S.rush = true; UI.banner('BUG RUSH', '버그가 몰려와요!', 1.8); SND.play('rush'); MUS.tempoMul = 0.82;
+          }
         }
       }
       // 누르고 있으면 연사
@@ -493,6 +543,12 @@ const Game = {
       this.look.lerp(tgt, Math.min(1, dt * 3));
     }
     this.camera.lookAt(this.look);
+    if (this.shake > 0.002) {
+      const k = this.shake * (settings.reduceFlash ? 0.4 : 1);
+      this.camera.position.x += (Math.random() - 0.5) * k; this.camera.position.y += (Math.random() - 0.5) * k;
+      this.camera.rotation.z += (Math.random() - 0.5) * k * 0.05;
+      this.shake *= Math.exp(-dt * 12);
+    }
     this.updateCamBasis();
 
     // 엔티티
@@ -529,7 +585,9 @@ const Game = {
     const cam = this.camera, W = this.W, H = this.H, k = H / 2 / this.tanHalf;
     for (const b of this.bugs) {
       _proj.copy(b.pos).project(cam);
+      b.behind = _proj.z > 1;
       b.onScreen = _proj.z < 1 && Math.abs(_proj.x) < 1.3 && Math.abs(_proj.y) < 1.3;
+      b.dist = b.pos.distanceTo(cam.position);
       b.sx = (_proj.x + 1) / 2 * W; b.sy = (1 - _proj.y) / 2 * H;
       const d = Math.max(0.5, b.pos.distanceTo(cam.position));
       b.sr = (b.spr.scale.x / 2) / d * k;
@@ -575,6 +633,27 @@ const Game = {
     const flip = play && this.hasGlitch('flip');
     if (flip !== this.hudFlipped) { this.hudFlipped = flip; $('#hud').classList.toggle('flipped', flip); }
   },
+  drawGun(g) {
+    if (!this.gunImgs) {
+      this.gunImgs = [gunCanvas('#C6F432'), gunCanvas('#FFD34D')];
+      if (ASSETS.gun) { const im = new Image(); im.src = ASSETS.gun; this.gunAsset = im; }
+    }
+    const p = this.gunPivot(), a = this.aimPoint(), L = this.gunLen();
+    const ang = Math.atan2(a.y - p.y, a.x - p.x);
+    const img = this.gunAsset && this.gunAsset.complete && this.gunAsset.naturalWidth ? this.gunAsset : this.gunImgs[this.weapon === 1 && this.refReady() ? 1 : 0];
+    const h = L * img.height / img.width;
+    g.save(); g.translate(p.x, p.y); g.rotate(ang);
+    if (Math.cos(ang) < 0) g.scale(1, -1);
+    g.imageSmoothingEnabled = img !== this.gunAsset ? false : true;
+    const back = this.recoil * L * 0.08;
+    g.drawImage(img, -L * 0.2 - back, -h * 0.55, L, h);
+    if (this.recoil > 0.6) { // 총구 불꽃
+      g.fillStyle = this.weapon === 1 ? '#FFD34D' : '#E6FF7A';
+      const mx = L * 0.8 - back;
+      g.fillRect(mx, -h * 0.25, L * 0.06, h * 0.3); g.fillRect(mx + L * 0.02, -h * 0.4, L * 0.02, h * 0.6);
+    }
+    g.restore();
+  },
   pop(x, y, txt, col) { this.pops.push({ x, y, txt, col, t: 0 }); },
 
   // ----- 2D 오버레이: 조준선·탄 궤적·점수·이름표 -----
@@ -593,6 +672,7 @@ const Game = {
       g.fillStyle = `rgba(230,255,140,${a})`; g.fillRect(t.x1 - 5, t.y1 - 5, 10, 10);
     }
     this.tracers = this.tracers.filter((t) => t.t < 0.12);
+    if (this.state === 'play' || this.state === 'clearing') this.drawGun(g);
     // 404 겹침 게이지
     for (const b of this.bugs) {
       if (b.type === 'e404' && b.hover > 0.05 && b.onScreen) {
@@ -604,6 +684,29 @@ const Game = {
         const tw = g.measureText('NEW · ' + b.label).width + 14;
         g.fillStyle = 'rgba(14,16,13,.85)'; g.fillRect(b.sx - tw / 2, b.sy - b.sr - 30, tw, 20);
         g.fillStyle = '#FFD34D'; g.fillText('NEW · ' + b.label, b.sx, b.sy - b.sr - 15);
+      }
+    }
+    // 가까운 버그 경고 + 화면 밖 버그 방향 화살표
+    for (const b of this.bugs) {
+      if (!b.alive || b.type === 'hotfix' || b.dist == null) continue;
+      const inView = !b.behind && b.sx > 0 && b.sx < W && b.sy > 0 && b.sy < H;
+      if (inView && b.dist < 7 && (b.type !== 'ghost' || b.vis)) {
+        if (!b.warned && this.state === 'play') { b.warned = true; SND.play('warn'); }
+        const pulse = 0.5 + 0.5 * Math.sin(this.time * 22);
+        g.strokeStyle = `rgba(255,77,94,${0.5 + pulse * 0.5})`; g.lineWidth = 3;
+        g.beginPath(); g.arc(b.sx, b.sy, b.sr + 6 + pulse * 4, 0, 6.283); g.stroke();
+        g.font = 'bold 22px ui-monospace,Menlo,monospace'; g.textAlign = 'center';
+        g.fillStyle = '#000'; g.fillText('!', b.sx + 2, b.sy - b.sr - 8); g.fillStyle = '#FF4D5E'; g.fillText('!', b.sx, b.sy - b.sr - 10);
+      } else if (!inView && b.dist < 22 && this.state === 'play') {
+        let dx = b.sx - W / 2, dy = b.sy - H / 2;
+        if (b.behind) { dx = -dx; dy = -dy; }
+        const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+        const m = 34, sc = Math.min((W / 2 - m) / Math.max(1e-3, Math.abs(dx)), (H / 2 - m) / Math.max(1e-3, Math.abs(dy)));
+        const x = W / 2 + dx * sc, y = H / 2 + dy * sc, a = Math.atan2(dy, dx);
+        const al = clamp(1.3 - b.dist / 22, 0.35, 1);
+        g.save(); g.translate(x, y); g.rotate(a);
+        g.fillStyle = `rgba(255,77,94,${al})`; g.beginPath(); g.moveTo(16, 0); g.lineTo(-8, -11); g.lineTo(-8, 11); g.closePath(); g.fill();
+        g.strokeStyle = '#000'; g.lineWidth = 2; g.stroke(); g.restore();
       }
     }
     // 보스 오류 줄 체력 칸

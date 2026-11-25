@@ -6,6 +6,7 @@ const BUGDEF = {
   ghost: { name: '투명 버그', pts: 200, spd: 3.1, size: 1.8, dmg: 15, tip: '보일 때만 맞아요' },
   e404: { name: '404 버그', pts: 250, spd: 3.0, size: 1.9, dmg: 15, tip: '조준선이 1초 겹치면 순간이동!' },
   loop: { name: '무한루프 버그', pts: 300, spd: 2.4, size: 1.8, dmg: 20, tip: '빛나는 지점을 지날 때만 맞아요' },
+  hotfix: { name: '핫픽스', pts: 0, spd: 0, size: 2.1, dmg: 0, tip: '쏘면 안정성 +20, 화면 고장 모두 복구!' },
 };
 const V1 = new THREE.Vector3(), V2 = new THREE.Vector3(), V3 = new THREE.Vector3();
 
@@ -41,6 +42,7 @@ class Bug {
     this.age += d;
     this.ft += d; if (this.ft > 0.14) { this.ft = 0; this.frame ^= 1; this.mat.map = TEX[this.type][this.frame]; }
     const cam = Game.camera, R = Game.camR, U = Game.camU;
+    if (this.type === 'hotfix') { this.updateItem(dt, d); return; }
     // 목표: 카메라 앞 약간 옆
     V1.copy(cam.position).addScaledVector(R, this.ox).addScaledVector(U, this.oy);
     const tgt = this.type === 'loop' ? this.center : this.pos;
@@ -82,6 +84,20 @@ class Bug {
     const cd = this.pos.distanceTo(cam.position);
     V3.subVectors(this.pos, cam.position);
     if (cd < 1.7 || V3.dot(Game.camF) < -0.5) Game.contact(this);
+  }
+  // 핫픽스: 플레이어와 같이 앞으로 흘러가며 둥실둥실, 6초 뒤 사라짐
+  updateItem(dt, d) {
+    if (this.vx == null) this.vx = (RNG() < 0.5 ? -1 : 1) * rnd(0.6, 1.2);
+    this.pos.addScaledVector(Game.camF, Game.camSpeed * 0.75 * d);
+    this.pos.addScaledVector(Game.camR, this.vx * d);
+    this.pos.y += Math.sin(this.age * 2.5) * 0.4 * d;
+    this.spr.position.copy(this.pos);
+    const s = this.def.size * Math.min(1, this.age / 0.3) * (1 + Math.sin(this.age * 6) * 0.08);
+    this.spr.scale.set(s, s, 1);
+    this.mat.rotation = Math.sin(this.age * 3) * 0.25;
+    this.mat.opacity = this.age > 4.8 ? (Math.floor(this.age * 10) % 2 ? 0.3 : 1) : 1;
+    V3.subVectors(this.pos, Game.camera.position);
+    if (this.age > 6.2 || V3.length() < 2 || V3.dot(Game.camF) < 0) this.remove();
   }
 }
 
@@ -231,7 +247,7 @@ const Boss = {
       this.snakes.push(fake);
     }
     if (n === 1) UI.hint('빨갛게 빛나는 "오류 줄"만 맞아요! 모두 고치면 다음 단계', 5);
-    else { UI.banner('PHASE ' + n, n === 2 ? '속도 증가! 버그를 뱉어내요' : '복붙 오류! 진짜만 빛나요', 2.2); SND.play('phase'); }
+    else { UI.banner('PHASE ' + n, n === 2 ? '속도 증가! 버그를 더 많이 뱉어요' : '복붙 오류! 진짜만 빛나요', 2.2); SND.play('phase'); Game.spawnHotfix(); }
   },
   targets() { const out = []; for (const sn of this.snakes) for (const s of sn.segs) if ((s.err || s.fake) && !s.fixed) out.push(s); return out; },
   hit(s) {
@@ -266,10 +282,10 @@ const Boss = {
     }
     if (this.ending) return;
     if (this.transT > 0) { this.transT -= dt; if (this.transT <= 0) this.startPhase(this.phase + 1); return; }
-    if (this.phase >= 2) {
+    if (this.phase >= 1) {
       this.spawnT -= dt * ws;
       if (this.spawnT <= 0 && Game.bugs.length < 8) {
-        this.spawnT = this.phase === 2 ? 2.4 : 2.8;
+        this.spawnT = [0, 4.5, 2.4, 2.8][this.phase];
         const head = this.real().segs[0].pos;
         const type = this.phase === 3 && this.r() < 0.4 ? 'clone' : 'basic';
         Game.spawnBugAt(type, head.clone(), {});

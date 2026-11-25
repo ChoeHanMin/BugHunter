@@ -99,6 +99,13 @@ function buildTextures() {
       TEX[k].asset = true;
     }
   }
+  // 핫픽스 아이템 (assets/item_hotfix.png 있으면 교체)
+  TEX.hotfix = [texFromCanvas(hotfixCanvas(0)), texFromCanvas(hotfixCanvas(1))];
+  if (ASSETS.item_hotfix) {
+    const t = new THREE.Texture(); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false;
+    const img = new Image(); img.onload = () => { t.image = img; t.needsUpdate = true; }; img.src = ASSETS.item_hotfix;
+    TEX.hotfix = [t, t];
+  }
   // 무한루프 껍질 링
   {
     const c = document.createElement('canvas'); c.width = c.height = 40; const g = c.getContext('2d');
@@ -160,6 +167,34 @@ function codeCanvas(text, mode, head) {
   }
   const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearFilter; t.generateMipmaps = false;
   return t;
+}
+function hotfixCanvas(frame) { // 초록 패치 패키지 (+)
+  const c = document.createElement('canvas'); c.width = c.height = 24; const g = c.getContext('2d');
+  g.fillStyle = '#10140c'; g.fillRect(3, 4, 18, 17);
+  g.fillStyle = frame ? '#E6FF7A' : '#C6F432'; g.fillRect(4, 5, 16, 15);
+  g.fillStyle = '#8fb81e'; g.fillRect(4, 17, 16, 3); g.fillRect(17, 5, 3, 15);
+  g.fillStyle = '#ffffff'; g.fillRect(7, 5, 8, 4);
+  g.fillStyle = '#10140c'; g.fillRect(11, 6, 2, 2);
+  g.fillStyle = '#1f5a1a'; g.fillRect(10, 10, 4, 8); g.fillRect(8, 12, 8, 4); // +
+  g.fillStyle = '#ffffff'; g.fillRect(11, 11, 2, 6); g.fillRect(9, 13, 6, 2);
+  if (frame) { g.fillStyle = '#ffffff'; g.fillRect(1, 2, 2, 2); g.fillRect(21, 1, 2, 2); g.fillRect(22, 20, 2, 2); }
+  return c;
+}
+// 패치 건 (오른쪽을 향함, 32×14 픽셀). assets/gun.png 있으면 교체
+function gunCanvas(stripe) {
+  const c = document.createElement('canvas'); c.width = 34; c.height = 16; const g = c.getContext('2d');
+  const R = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+  // 외곽선
+  R(4, 2, 22, 10, '#0a0c09'); R(24, 4, 10, 6, '#0a0c09'); R(3, 9, 9, 7, '#0a0c09');
+  // 손잡이 · 몸통 · 총열
+  R(4, 10, 7, 6, '#2a2f28');
+  R(5, 3, 20, 8, '#3a4037'); R(5, 3, 20, 1, '#5a6156');
+  R(25, 5, 8, 4, '#6B6F68'); R(25, 5, 8, 1, '#8a9084');
+  R(31, 5, 2, 4, stripe); // 총구
+  R(6, 7, 18, 1, stripe); // 줄
+  R(8, 4, 7, 2, '#0f2a10'); R(9, 4, 1, 1, stripe); R(11, 5, 1, 1, stripe); R(13, 4, 1, 1, stripe); // 작은 화면
+  R(18, 4, 2, 2, '#FF4D5E');
+  return c;
 }
 const ASSET_KEY = { basic: 'bug_basic', clone: 'bug_clone', mini: 'bug_mini', ghost: 'bug_ghost', e404: 'bug_404', loop: 'bug_loop' };
 function bugImgCanvas(type) { // DOM용 (하는 법/크래시 화면)

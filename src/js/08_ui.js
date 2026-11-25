@@ -105,7 +105,7 @@ const UI = {
     set('stab', Math.round(r.stab), (v) => { $('#stabFill').style.width = v + '%'; $('#stabFill').classList.toggle('low', v <= 30); $('#stabTxt').textContent = v + '%'; });
     set('prog', Math.round((S.ratio || 0) * 100), (v) => { $('#progFill').style.width = v + '%'; $('#progTxt').textContent = (S.def.boss ? `오류 줄 ${Boss.fixed}/16 · ` : '고친 비율 ') + v + '%'; });
     set('score', r.score, (v) => { $('#scoreTxt').textContent = v.toLocaleString(); });
-    set('mult', Game.mult().toFixed(1), (v) => { $('#comboTxt').textContent = '연속 ×' + v; });
+    set('mult', Game.mult().toFixed(1), (v) => { const el = $('#comboTxt'); el.textContent = '연속 ×' + v; el.style.color = v === '2.0' ? '#FFD34D' : ''; });
     set('gl', Game.glitches.map((g) => g.type + Math.ceil(g.t)).join(), () => {
       $('#glitchList').innerHTML = Game.glitches.map((g) => `<div>⚠ ${GLITCH[g.type].name} ${Math.ceil(g.t)}s</div>`).join('');
     });
@@ -173,7 +173,7 @@ const UI = {
     $('#resStats').innerHTML = [
       ['총점', r.score.toLocaleString()], ['정확도', Math.round(acc * 100) + '%'], ['크래시', r.st.crashes + '회'], ['남은 안정성', Math.round(r.stab) + '% (+' + r.stabBonus.toLocaleString() + ')'],
       ['기본 / 복제 / 작은 복제', `${f.basic} / ${f.clone} / ${f.mini}`], ['투명 / 404 / 무한루프', `${f.ghost} / ${f.e404} / ${f.loop}`],
-      ['보스 오류 줄', f.boss + '/16 · ' + fmtTime(r.st.bossTime)], ['최대 연속 패치', r.maxStreak + '회'],
+      ['보스 오류 줄', f.boss + '/16 · ' + fmtTime(r.st.bossTime)], ['최대 연속 패치', r.maxStreak + '회'], ['PERFECT / 핫픽스', `${r.st.perfect} / ${r.st.hotfix}`],
     ].map(([k, v]) => `<span class="k">${k}</span><span class="v">${v}</span>`).join('');
     const note = this.patchNote(grade, acc);
     $('#resNote').textContent = note; $('#resNoteTa').value = note;
@@ -227,6 +227,8 @@ const UI = {
     add(miss > 0, `헛발질 ${miss}발 — 탄약이 무제한이라 다행`, 1);
     add(st.blastMax >= 3, `한 방에 복제 버그 ${st.blastMax}마리 동시 수정`, 1.5);
     add(true, `총 ${total}개의 버그가 세상에서 사라졌습니다`, 0.8);
+    add(st.perfect >= 5, `PERFECT 패치 ${st.perfect}회 — 정밀 디버깅 장인`, 2);
+    add(st.hotfix > 0, `핫픽스 ${st.hotfix}개 긴급 배포`, 1.2);
     pool.sort((a, b) => b[1] - a[1]);
     for (const p of pool.slice(0, 2)) lines.push(p[0]);
     const known = [];
