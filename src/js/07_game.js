@@ -2,7 +2,7 @@
 const STAGES = [
   { id: 1, key: 'forest', name: '텍스처 없는 숲', theme: 0x6BD66B, sky: 0x173a26, dur: 44, count: 15, mix: { basic: 1 }, intro: ['basic'], fog: [18, 95, 30, 150], light: [0.8, 1.1] },
   { id: 2, key: 'city', name: '복붙 도시', theme: 0xFF9E3D, sky: 0x2a1838, dur: 50, count: 20, mix: { basic: 10, clone: 10 }, intro: ['clone'], unlock: 'refactor', fog: [22, 110, 30, 160], light: [0.8, 1.1] },
-  { id: 3, key: 'subway', name: '렌더링 지하철', theme: 0x3DE0D0, sky: 0x0b2a30, dur: 52, count: 23, mix: { basic: 8, clone: 6, ghost: 9 }, intro: ['ghost'], unlock: 'rollback', fog: [6, 34, 18, 95], light: [0.25, 1.05] },
+  { id: 3, key: 'subway', name: '렌더링 지하철', theme: 0x3DE0D0, sky: 0x0b2a30, dur: 52, count: 26, mix: { basic: 9, clone: 7, ghost: 10 }, intro: ['ghost'], unlock: 'rollback', fog: [6, 34, 18, 95], light: [0.25, 1.05] },
   { id: 4, key: 'physics', name: '물리 고장 구역', theme: 0xB07CFF, sky: 0x22163a, dur: 58, count: 28, mix: { basic: 6, clone: 5, ghost: 5, e404: 6, loop: 6 }, intro: ['e404', 'loop'], fog: [18, 100, 30, 150], light: [0.75, 1.1] },
   { id: 5, key: 'boss', name: '보스 "메인 루프"', theme: 0xC6F432, sky: 0x0f2a12, boss: true, fog: [30, 120, 40, 170], light: [0.7, 1.1] },
 ];
@@ -196,7 +196,7 @@ const Game = {
       this.bugs.push(new Bug('mini', p, { sep: this.camR.clone().multiplyScalar(s * 4), spdMul: b.spdMul, ox: b.ox + s * 0.8, oy: b.oy }));
     }
     this.run.st.fixed.clone++;
-    this.S.fixed++;
+    if (!this.S.def.boss) this.S.fixed++; // 보스전 진행률은 오류 줄만
     this.pop(b.sx, b.sy - 20, '분열!', '#FFD34D');
     b.remove();
   },
@@ -242,7 +242,7 @@ const Game = {
     PFX.fix(b.pos, b.type === 'ghost' ? [0.75, 0.96, 1] : b.type === 'clone' || b.type === 'mini' ? [1, 0.83, 0.3] : [1, 0.3, 0.37], b.type === 'mini' ? 0.7 : 1);
     this.addScore(b.def.pts * (perfect ? 1.5 : 1), b.sx, b.sy);
     this.run.st.fixed[b.type]++;
-    this.S.fixed++;
+    if (!this.S.def.boss) this.S.fixed++;
     this.streakUp();
     World.colorizeNear(b.pos, b.type === 'mini' ? 2 : 4);
     if (this.S.tutorial) { this.S.tutorial = false; UI.hint(''); }
