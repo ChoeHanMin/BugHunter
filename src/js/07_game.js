@@ -422,7 +422,7 @@ const Game = {
     const N = new THREE.Vector3(-T.z, 0, T.x);
     for (const b of this.titleBugs) {
       const k = this.time * 0.7 + b.ph;
-      b.spr.position.copy(P).addScaledVector(T, b.d + Math.sin(k) * 1.5).addScaledVector(N, b.side * (2.2 + Math.sin(k * 1.7) * 1.5));
+      b.spr.position.copy(P).addScaledVector(T, b.d + Math.sin(k) * 1.5).addScaledVector(N, b.side * (5.2 + Math.sin(k * 1.7) * 1.2));
       b.spr.position.y = 0.7 + Math.abs(Math.sin(k * 3)) * 0.3;
       b.spr.material.map = TEX[b.t][Math.floor(this.time * 7 + b.ph) % 2];
       b.spr.material.rotation = Math.sin(k * 4) * 0.2;
