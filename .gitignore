@@ -1,0 +1,3 @@
+node_modules/
+dist/index.dev.html
+.DS_Store
