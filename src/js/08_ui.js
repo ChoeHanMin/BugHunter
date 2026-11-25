@@ -26,7 +26,11 @@ const UI = {
     click('#btnHowGo', () => this.afterHow());
     click('#btnHowSkip', () => this.afterHow());
     click('#btnDiffBack', () => this.only('#scrTitle'));
-    $$('.dcard').forEach((b) => b.addEventListener('click', () => { SND.init(); SND.play('click'); Store.set('diff', b.dataset.d); this.only(); Game.newRun(this.pendingDaily, b.dataset.d); }));
+    $$('.dcard').forEach((b) => b.addEventListener('click', () => {
+      SND.init();
+      if (b.dataset.d === 'hard' && !this.hardOpen()) { SND.play('jam'); this.toast('난이도 중을 한 번 깨면 열려요'); return; }
+      SND.play('click'); Store.set('diff', b.dataset.d); this.only(); Game.newRun(this.pendingDaily, b.dataset.d);
+    }));
     click('#btnResume', () => this.resume());
     click('#btnPauseSet', () => this.showSettings('#scrPause'));
     click('#btnRestartStage', () => { this.only(); Game.state = 'play'; if (SND.ctx) SND.ctx.resume(); Game.restoreSnapshot(); Game.startStage(Game.run.stage); });
@@ -65,7 +69,17 @@ const UI = {
     this.afterHow();
   },
   afterHow() { Store.set('seenHow', true); this.showDiff(); },
+  // 상 난이도 잠금: 중(또는 상)을 한 번 깨면 열림. 저장이 막힌 환경에서는 이번 접속 동안만 기억
+  hardOpenMem: false,
+  hardOpen() { return this.hardOpenMem || !!Store.get('records', {}).hardOpen; },
   showDiff() {
+    const open = this.hardOpen(), hc = $('.dcard.hard');
+    hc.classList.toggle('locked', !open);
+    hc.setAttribute('aria-disabled', String(!open));
+    hc.querySelector('.dd').textContent = open
+      ? '버그가 끝없이 몰려오고 갑자기 돌진해요. 복제 버그는 엉뚱한 곳으로 튀고, 패치 건이 과열돼요. 가짜 핫픽스도 섞여 있어요.'
+      : '🔒 난이도 중을 한 번 깨면 열려요.';
+    if (!open && Store.get('diff', 'normal') === 'hard') Store.set('diff', 'normal');
     $('#diffMode').textContent = this.pendingDaily ? '오늘의 빌드 ' + DAILY_VER : '정식 빌드';
     const last = Store.get('diff', 'normal');
     $$('.dcard').forEach((b) => b.classList.toggle('last', b.dataset.d === last));
@@ -265,8 +279,11 @@ const UI = {
     earn('boss90', r.st.bossTime > 0 && r.st.bossTime <= 90);
     earn('hard', r.diff === 'hard');
     earn('hardrelease', r.diff === 'hard' && grade === '정식 출시');
+    let unlocked = false;
+    if ((r.diff === 'normal' || r.diff === 'hard') && !this.hardOpen()) { rec.hardOpen = true; this.hardOpenMem = true; unlocked = true; }
     Store.set('records', rec);
-    $('#resChal').textContent = got.length ? '🏆 새 도전 과제: ' + got.join(', ') : '';
+    $('#resChal').textContent = (unlocked ? '🔓 난이도 상이 열렸어요! ' : '') + (got.length ? '🏆 새 도전 과제: ' + got.join(', ') : '');
+    if (unlocked) SND.play('unlock');
     this.only('#scrResult');
   },
   patchNote(grade, acc) {
