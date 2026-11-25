@@ -16,7 +16,7 @@ const UI = {
     $('#verBadge').textContent = DAILY_VER;
     if (ASSETS.logo) $('#logo').innerHTML = `<img class="logoimg" src="${ASSETS.logo}" alt="BUG HUNTER">`;
     const c1 = bugImgCanvas('basic'); $('#howPic1').append(c1); const hand = document.createElement('div'); hand.className = 'hand'; hand.textContent = IS_TOUCH ? '👆' : '🖱️'; $('#howPic1').append(hand);
-    $('#howPic2').append(bugImgCanvas('clone'));
+    $('#howPic2').append(bugImgCanvas('throw'));
     $('#crashBug').append(bugImgCanvas('basic'));
     const click = (id, fn) => $(id).addEventListener('click', (e) => { SND.init(); SND.play('click'); fn(e); });
     click('#btnStart', () => this.start(false));
@@ -59,6 +59,10 @@ const UI = {
   showTitle() { this.only('#scrTitle'); $('#hud').classList.add('hidden'); this.hint(''); $('#banner').classList.add('hidden'); },
   showHUD() {
     this.only(); $('#hud').classList.remove('hidden');
+    // 분대 얼굴 그리기
+    $$('.mem').forEach((b, i) => { const c = b.querySelector('.pt'), im = IMG.portrait && IMG.portrait[i]; if (!im) return;
+      const draw = () => { const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, 24, 24); g.drawImage(im, 0, 0, 24, 24); };
+      if (im instanceof HTMLImageElement && !im.complete) im.onload = draw; else draw(); });
     $('#stageLbl').innerHTML = 'STAGE ' + Game.S.def.id + ' · ' + Game.S.def.name + `<span class="diffchip" style="color:${Game.D.key === 'hard' ? '#FF4D5E' : '#aab2a3'}">${Game.D.name}</span>`;
     $('#helpBadge').classList.toggle('hidden', !Game.run.help[Game.run.stage]);
     this._hud = {};
@@ -135,17 +139,18 @@ const UI = {
       $('#glitchList').innerHTML = Game.glitches.map((g) => `<div>⚠ ${GLITCH[g.type].name} ${Math.ceil(g.t)}s</div>`).join('');
     });
     set('w', Game.weapon + '|' + Game.unlocked(1) + Game.unlocked(2) + '|' + S.rb + '|' + (Game.rollT > 0), () => {
-      $$('.wpn').forEach((b) => {
-        const w = +b.dataset.w;
-        b.classList.toggle('sel', w === Game.weapon);
-        b.classList.toggle('locked', !Game.unlocked(w));
-      });
+      $$('.mem').forEach((b) => { const i = +b.dataset.m; b.classList.toggle('sel', i === Game.weapon); b.classList.toggle('locked', !Game.memberUnlocked(i)); });
+      const rb = $('.wpn.rb');
+      rb.classList.toggle('locked', !Game.unlocked(2));
       $('#rbCount').textContent = '×' + S.rb;
-      $('.wpn.rb').classList.toggle('empty', S.rb <= 0);
-      $('.wpn.rb').classList.toggle('on', Game.rollT > 0);
+      rb.classList.toggle('empty', S.rb <= 0);
+      rb.classList.toggle('on', Game.rollT > 0);
     });
-    const cd = Game.refT > 0 ? Math.round((Game.refT / 3) * 100) : 0;
-    set('cd', cd, (v) => { $('.wpn[data-w="1"] .cd').style.width = v + '%'; });
+    // 탄약 막대
+    Game.squad.forEach((q, i) => {
+      const v = q.reloadT > 0 ? Math.round((1 - q.reloadT / q.d.reload) * 100) : Math.round(q.ammo / q.d.mag * 100);
+      set('am' + i, v + (q.reloadT > 0 ? 'r' : ''), () => { const b = $$('.mem')[i]; b.querySelector('.am i').style.width = v + '%'; b.classList.toggle('rel', q.reloadT > 0); });
+    });
   },
   // ----- 패치 로그 (왼쪽 코드 창) -----
   clQ: [], clT: 0,
@@ -186,6 +191,7 @@ const UI = {
       basic: `TypeError: ${v}.update is not a function`, clone: `RangeError: ${v} 복제가 너무 많음`, mini: `Warning: 중복된 ${v} 발견`,
       trojan: `SecurityError: hotfix.exe 는 핫픽스가 아닙니다`,
       ghost: `ReferenceError: ${v} is not defined`, e404: `404 Not Found: /${v}.json`, loop: `RangeError: Maximum call stack size exceeded`,
+      packet: `UncaughtException: throw new Error("${v}")`, missile: `FatalError: infiniteLoop() 관통 — 엄폐 무시`,
     }[type] || `Error: ${v} 붕괴`;
     const code = String(Math.floor(r() * 1e6)).padStart(6, '0');
     this.clPush([['cmd', `$ run ${v}.js`], ['del', msg], ['trace', `    at ${v}.tick (${v}.js:${Math.floor(r() * 900 + 10)}:${Math.floor(r() * 80 + 1)})`], ['err', `✖ Run Error(0x${code})`]]);
@@ -254,7 +260,8 @@ const UI = {
     const f = r.st.fixed;
     $('#resStats').innerHTML = [
       ['총점', r.score.toLocaleString()], ['정확도', Math.round(acc * 100) + '%'], ['크래시', r.st.crashes + '회'], ['남은 안정성', Math.round(r.stab) + '% (+' + r.stabBonus.toLocaleString() + ')'],
-      ['기본 / 복제 / 작은 복제', `${f.basic} / ${f.clone} / ${f.mini}`], ['투명 / 404 / 무한루프', `${f.ghost} / ${f.e404} / ${f.loop}`],
+      ['기본 / 복제 / 작은 복제', `${f.basic} / ${f.clone} / ${f.mini}`], ['throw / 투명 / 404 / 무한루프', `${f.throw || 0} / ${f.ghost} / ${f.e404} / ${f.loop}`],
+      ['엄폐물로 막은 공격 / 미사일 격추', `${r.st.blocked} / ${r.st.missiles}`],
       ['보스 오류 줄', f.boss + '/16 · ' + fmtTime(r.st.bossTime)], ['최대 연속 패치', r.maxStreak + '회'], ['PERFECT / 핫픽스', `${r.st.perfect} / ${r.st.hotfix}`],
     ].map(([k, v]) => `<span class="k">${k}</span><span class="v">${v}</span>`).join('');
     const note = this.patchNote(grade, acc);
@@ -290,7 +297,7 @@ const UI = {
     const r = Game.run, st = r.st, f = st.fixed;
     const rr = mulberry32(r.score + st.shots);
     const ver = r.daily ? DAILY_VER : 'v1.0.' + st.crashes;
-    const kinds = [['기본', f.basic], ['복제', f.clone + f.mini], ['투명', f.ghost], ['404', f.e404], ['무한루프', f.loop]].sort((a, b) => b[1] - a[1]);
+    const kinds = [['기본', f.basic], ['복제', f.clone + f.mini], ['throw', f.throw || 0], ['투명', f.ghost], ['404', f.e404], ['무한루프', f.loop]].sort((a, b) => b[1] - a[1]);
     const lines = [`${kinds[0][0]} 버그 ${kinds[0][1]}마리 수정`];
     const glName = { tear: '화면 찢어짐', inv: '색 반전', flip: '화면 뒤집힘', slip: '조준 미끄러짐', pix: '픽셀화' };
     const topG = Object.entries(st.glitch).sort((a, b) => b[1] - a[1])[0];
@@ -316,6 +323,8 @@ const UI = {
     add(true, `총 ${total}개의 버그가 세상에서 사라졌습니다`, 0.8);
     add(st.perfect >= 5, `PERFECT 패치 ${st.perfect}회 — 정밀 디버깅 장인`, 2);
     add(st.hotfix > 0, `핫픽스 ${st.hotfix}개 긴급 배포`, 1.2);
+    add(st.blocked >= 10, `엄폐물로 에러 패킷 ${st.blocked}개 방어 — 숨기 장인`, 2.2);
+    add(st.missiles > 0, `관통 미사일 ${st.missiles}발 격추`, 1.8);
     add(st.overheat > 0, `패치 건 과열 ${st.overheat}회 — 냉각 팬 교체 예정`, 2.5);
     add(st.trojan > 0, `트로이 목마 핫픽스 ${st.trojan}개에 속음 (보안팀 호출)`, 3);
     add(st.dash >= 5, `돌진 버그 ${st.dash}마리와 정면 승부`, 1.5);

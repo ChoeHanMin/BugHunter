@@ -33,9 +33,10 @@
     </div>
     <button id="pauseBtn" aria-label="일시정지">❚❚</button>
     <div id="weapons">
-      <button class="wpn sel" data-w="0"><b class="k">1</b><span class="ic">◉</span><span class="nm">디버거</span></button>
-      <button class="wpn" data-w="1"><b class="k">2</b><span class="ic">⋔</span><span class="nm">리팩터</span><i class="cd"></i><em class="lock">🔒</em></button>
-      <button class="wpn rb" data-w="2"><b class="k">3</b><span class="ic">◀◀</span><span class="nm">롤백 <span id="rbCount">2</span></span><em class="lock">🔒</em></button>
+      <button class="mem sel" data-m="0"><b class="k">1</b><canvas class="pt" width="24" height="24"></canvas><span class="mn">도트</span><span class="mr">연사</span><i class="am"><i></i></i><em class="lock">🔒</em></button>
+      <button class="mem" data-m="1"><b class="k">2</b><canvas class="pt" width="24" height="24"></canvas><span class="mn">렉스</span><span class="mr">산탄</span><i class="am"><i></i></i><em class="lock">🔒</em></button>
+      <button class="mem" data-m="2"><b class="k">3</b><canvas class="pt" width="24" height="24"></canvas><span class="mn">핀</span><span class="mr">저격</span><i class="am"><i></i></i><em class="lock">🔒</em></button>
+      <button class="wpn rb" data-w="2"><b class="k">␣</b><span class="ic">◀◀</span><span class="nm">롤백 <span id="rbCount">2</span></span><em class="lock">🔒</em></button>
     </div>
   </div>
 
@@ -64,9 +65,9 @@
     <div class="panel wide">
       <h2>하는 법</h2>
       <div class="how">
-        <div class="card"><div class="pic" id="howPic1"></div><b>① 탭해서 고치기</b><p><span class="tOnly">다가오는 버그를 직접 탭!</span><span class="mOnly">마우스로 조준, 클릭!</span><br>누르고 있으면 연사돼요.</p></div>
-        <div class="card"><div class="pic glitchy" id="howPic2"></div><b>② 닿으면 화면 고장</b><p>버그에 닿으면 안정성이 깎이고<br>화면이 찢어지거나 뒤집혀요.</p></div>
-        <div class="card"><div class="pic wp"><span>◉</span><span>⋔</span><span>◀◀</span></div><b>③ 무기 3개</b><p>디버거 · 리팩터(산탄) · 롤백(슬로모션)<br>은 스테이지를 깨며 하나씩 열려요.</p></div>
+        <div class="card"><div class="pic" id="howPic1"></div><b>① 누르면 나가서 쏘기</b><p><span class="tOnly">화면을 누르고 있으면 엄폐물 위로 나와 자동 사격.<br>손가락을 끌면 조준점이 움직여요.</span><span class="mOnly">마우스 왼쪽을 누르고 있으면 엄폐물 위로 나와 자동 사격.</span></p></div>
+        <div class="card"><div class="pic glitchy" id="howPic2"></div><b>② 떼면 숨기 · 재장전</b><p>빨간 예고 원이 뜨면 손을 떼서 숨으세요.<br>달려오는 버그와 관통 미사일은 숨어도 맞으니 쏴서 막아요.</p></div>
+        <div class="card"><div class="pic wp" id="howPic3"></div><b>③ 3인 분대</b><p>도트(연사) · 렉스(산탄) · 핀(저격)<br>아이콘으로 조작할 캐릭터를 바꾸면 나머지는 알아서 쏴요.</p></div>
       </div>
       <button class="btn pri" id="btnHowGo">시작하기</button>
       <button class="btn ghost" id="btnHowSkip">건너뛰기</button>

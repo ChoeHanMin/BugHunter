@@ -19,6 +19,11 @@
 | `gun.png` | 패치 건 1인칭 (손이 오른쪽 아래에서 쥐고, 총구가 왼쪽 위 끝) | 가로 640 | 투명 배경, 4:3 |
 | `gun_refactor.png` | (선택) 리팩터 모드 총 — 같은 구도 | 가로 640 | 투명 배경, 4:3 |
 | `sfx_shot.mp3` / `sfx_spread.mp3` | (선택) 발사음 파일 (mp3·ogg·wav) | 그대로 | 1초 이하, 150KB 이하 |
+| `portrait_dot.png` / `portrait_rex.png` / `portrait_pin.png` | 분대 얼굴 3장 | 128×128 | 투명 배경, 정사각형 |
+| `gun_sniper.png` | 저격 패치 건 1인칭 (gun.png와 같은 구도) | 가로 640 | 투명 배경, 4:3 |
+| `bug_throw.png` | throw 버그 | 96×96 | 투명 배경 |
+| `proj_missile.png` / `proj_packet.png` | 관통 미사일 / 에러 패킷 | 64×64 | 투명 배경 |
+| `cover.png` 또는 `cover_forest.png` 등 | (선택) 엄폐물 정면, 화면 아래를 가로로 채움 | 가로 800 | 투명 배경, 3:1 |
 | `thumbnail.png` | saaskr 업로드용 썸네일 (게임에 안 들어감) | — | — |
 
 ChatGPT에 쓸 프롬프트는 `../PROMPTS.md`에 있어요.

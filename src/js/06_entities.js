@@ -1,24 +1,31 @@
 // ---------- 버그 · 파티클 · 보스 ----------
+// role: rush(엄폐물까지 달려와 물기 — 숨어도 맞음) / shoot(멀리 서서 예고 후 에러 패킷 — 숨으면 막힘)
+//       missile(관통 미사일 — 숨어도 맞음, 쏴서 떨어뜨려야 함) / item(핫픽스)
 const BUGDEF = {
-  basic: { name: '기본 버그', pts: 100, spd: 3.7, size: 1.8, dmg: 15 },
-  clone: { name: '복제 버그', pts: 0, spd: 3.2, size: 2.0, dmg: 15, tip: '맞으면 둘로 분열해요!' },
-  mini: { name: '작은 복제', pts: 50, spd: 4.4, size: 1.15, dmg: 8 },
-  ghost: { name: '투명 버그', pts: 200, spd: 3.1, size: 1.8, dmg: 15, tip: '보일 때만 맞아요' },
-  e404: { name: '404 버그', pts: 250, spd: 3.0, size: 1.9, dmg: 15, tip: '조준선이 1초 겹치면 순간이동!' },
-  loop: { name: '무한루프 버그', pts: 300, spd: 2.4, size: 1.8, dmg: 20, tip: '빛나는 지점을 지날 때만 맞아요' },
-  hotfix: { name: '핫픽스', pts: 0, spd: 0, size: 2.1, dmg: 0, tip: '쏘면 안정성 +20, 화면 고장 모두 복구!' },
+  basic: { name: '기본 버그', role: 'rush', hp: 3, pts: 100, spd: 3.0, size: 1.8, dmg: 14 },
+  clone: { name: '복제 버그', role: 'rush', hp: 4, pts: 0, spd: 2.7, size: 2.0, dmg: 14, tip: '맞으면 둘로 분열해요!' },
+  mini: { name: '작은 복제', role: 'rush', hp: 1, pts: 50, spd: 3.8, size: 1.15, dmg: 7 },
+  throw: { name: 'throw 버그', role: 'shoot', hp: 4, pts: 150, spd: 3.6, size: 1.8, dmg: 10, fire: [2.8, 4.4], tip: '빨간 원이 뜨면 손을 떼서 숨으세요!' },
+  ghost: { name: '투명 버그', role: 'shoot', hp: 3, pts: 200, spd: 3.2, size: 1.8, dmg: 10, fire: [3.2, 4.8], tip: '보일 때만 맞아요' },
+  e404: { name: '404 버그', role: 'shoot', hp: 4, pts: 250, spd: 3.2, size: 1.9, dmg: 10, fire: [3.0, 4.6], tip: '조준선이 1초 겹치면 순간이동!' },
+  loop: { name: '무한루프 버그', role: 'shoot', hp: 6, pts: 300, spd: 2.6, size: 1.8, dmg: 18, fire: [5.5, 7.5], missile: true, tip: '관통 미사일을 쏴요! 숨어도 맞으니 미사일을 쏴서 떨어뜨리세요' },
+  missile: { name: '관통 미사일', role: 'missile', hp: 2, pts: 50, spd: 4.4, size: 1.3, dmg: 16 },
+  hotfix: { name: '핫픽스', role: 'item', hp: 1, pts: 0, spd: 0, size: 2.1, dmg: 0, tip: '쏘면 안정성 +20, 화면 고장 모두 복구!' },
 };
 const V1 = new THREE.Vector3(), V2 = new THREE.Vector3(), V3 = new THREE.Vector3();
 
 class Bug {
   constructor(type, pos, opt = {}) {
-    this.type = type; this.def = BUGDEF[type];
+    this.type = type; this.def = BUGDEF[type]; this.role = this.def.role;
     this.pos = pos.clone(); this.center = pos.clone();
+    this.anchor = opt.anchor ? opt.anchor.clone() : null; this.arrived = false;
+    this.hp = this.maxHp = Math.max(1, Math.round(this.def.hp * (opt.hpMul || 1)));
     this.age = 0; this.alive = true; this.frame = 0; this.ft = 0;
-    this.intro = !!opt.intro; this.spdMul = (opt.spdMul || 1) * (this.intro ? 0.6 : 1);
-    this.ox = opt.ox != null ? opt.ox : rnd(-1.6, 1.6); this.oy = opt.oy != null ? opt.oy : rnd(-0.9, 0.9);
-    this.wf = rnd(1.2, 2.4); this.wa = rnd(0.6, 1.6); this.ph = rnd(0, 6.28);
+    this.intro = !!opt.intro; this.spdMul = (opt.spdMul || 1) * (this.intro ? 0.7 : 1);
+    this.ox = opt.ox != null ? opt.ox : rnd(-1.4, 1.4); this.oy = opt.oy != null ? opt.oy : rnd(-0.6, 0.6);
+    this.wf = rnd(1.2, 2.4); this.wa = rnd(0.6, 1.4); this.ph = rnd(0, 6.28);
     this.sep = opt.sep ? opt.sep.clone() : null;
+    this.fireT = this.def.fire ? rnd(1.2, 2.2) : 0;
     this.hover = 0; this.vis = true; this.vuln = true; this.flash = 0;
     this.sx = -999; this.sy = -999; this.sr = 0; this.onScreen = false;
     this.mat = new THREE.SpriteMaterial({ map: TEX[type][0], transparent: true, fog: false });
@@ -32,6 +39,7 @@ class Bug {
       Game.scene.add(this.ring, this.glow);
     }
   }
+  get hostile() { return this.role !== 'item'; }
   remove() {
     this.alive = false;
     Game.scene.remove(this.spr); this.mat.dispose();
@@ -42,30 +50,43 @@ class Bug {
     this.age += d;
     this.ft += d; if (this.ft > 0.14) { this.ft = 0; this.frame ^= 1; this.mat.map = TEX[this.type][this.frame]; }
     const cam = Game.camera, R = Game.camR, U = Game.camU;
-    if (this.type === 'hotfix') { this.updateItem(dt, d); return; }
-    // 목표: 카메라 앞 약간 옆
-    V1.copy(cam.position).addScaledVector(R, this.ox).addScaledVector(U, this.oy);
+    if (this.role === 'item') { this.updateItem(dt, d); return; }
     const tgt = this.type === 'loop' ? this.center : this.pos;
-    V2.subVectors(V1, tgt); const dist = V2.length(); V2.divideScalar(dist || 1);
     let sp = this.def.spd * this.spdMul * Game.bugSpeedMul;
-    // 돌진 (상): 가까이 오면 갑자기 빨라짐
-    if (Game.D.dash && !this.dashRolled && this.type !== 'loop' && this.age > 0.6) {
-      const dd = this.pos.distanceTo(cam.position);
-      if (dd < 16) { this.dashRolled = true; if (RNG() < Game.D.dash) { this.windT = 0.5; this.dashT = 0; Game.run.st.dash++; SND.play('warn'); } }
+    if (this.role === 'shoot') {
+      // 자리 잡기 → 둥실둥실 떠 있다가 예고 후 공격
+      if (!this.arrived) {
+        V2.subVectors(this.anchor, tgt); const dist = V2.length();
+        if (dist < 0.4) this.arrived = true; else tgt.addScaledVector(V2.divideScalar(dist), Math.min(dist, sp * 1.5 * d));
+      } else {
+        V1.copy(this.anchor).addScaledVector(R, Math.sin(this.age * 0.7 + this.ph) * 1.3).addScaledVector(U, Math.sin(this.age * 1.1 + this.ph) * 0.35);
+        tgt.lerp(V1, Math.min(1, d * 2));
+        if (Game.canEnemiesAct()) {
+          this.fireT -= d;
+          if (this.fireT <= 0) { this.fireT = rnd(this.def.fire[0], this.def.fire[1]) * Game.D.fireMul; Game.enemyAttack(this); }
+        }
+      }
+    } else {
+      // 돌격형·미사일: 카메라(엄폐물)를 향해 곧장
+      V1.copy(cam.position).addScaledVector(R, this.role === 'missile' ? this.ox * 0.3 : this.ox).addScaledVector(U, this.role === 'missile' ? 0 : this.oy);
+      V2.subVectors(V1, tgt); const dist = V2.length(); V2.divideScalar(dist || 1);
+      // 돌진 (상): 0.5초 예고 후 빨라짐
+      if (this.role === 'rush' && Game.D.dash && !this.dashRolled && this.age > 0.6) {
+        if (this.pos.distanceTo(cam.position) < 16) { this.dashRolled = true; if (RNG() < Game.D.dash) { this.windT = 0.5; this.dashT = 0; Game.run.st.dash++; SND.play('warn'); } }
+      }
+      if (this.windT > 0) { this.windT -= dt; sp *= 0.1; this.dashT = this.windT <= 0 ? 0.8 : 0.001; this.pos.addScaledVector(R, (Math.random() - 0.5) * 0.12); }
+      else if (this.dashT > 0) { this.dashT -= dt; sp *= 1.9; }
+      tgt.addScaledVector(V2, sp * d);
+      const wa = this.role === 'missile' ? 0.25 : this.wa;
+      tgt.addScaledVector(R, Math.cos(this.age * this.wf + this.ph) * wa * d);
+      tgt.addScaledVector(U, Math.sin(this.age * this.wf * 1.3 + this.ph) * wa * 0.5 * d);
+      if (this.sep) { tgt.addScaledVector(this.sep, d); this.sep.multiplyScalar(Math.max(0, 1 - d * 2.5)); }
     }
-    // 예고(0.5초 멈춰서 부르르) → 돌진(0.8초 1.9배)
-    if (this.windT > 0) { this.windT -= dt; sp *= 0.1; this.dashT = this.windT <= 0 ? 0.8 : 0.001; this.pos.addScaledVector(R, (Math.random() - 0.5) * 0.12); }
-    else if (this.dashT > 0) { this.dashT -= dt; sp *= 1.9; }
-    tgt.addScaledVector(V2, sp * d);
-    tgt.addScaledVector(R, Math.cos(this.age * this.wf + this.ph) * this.wa * d);
-    tgt.addScaledVector(U, Math.sin(this.age * this.wf * 1.3 + this.ph) * this.wa * 0.5 * d);
-    if (this.sep) { tgt.addScaledVector(this.sep, d); this.sep.multiplyScalar(Math.max(0, 1 - d * 2.5)); }
     let scale = this.def.size * Math.min(1, this.age / 0.3);
-    this.flash = Math.max(0, this.flash - dt * 4);
+    this.flash = Math.max(0, this.flash - dt * 6);
     if (this.type === 'ghost') {
       const cyc = (this.age + this.ph) % 1.5;
-      const on = cyc < 0.5;
-      const target = on ? 1 : 0.07;
+      const target = cyc < 0.5 ? 1 : 0.07;
       this.mat.opacity += (target - this.mat.opacity) * Math.min(1, dt * 18);
       this.vis = this.mat.opacity > 0.55;
     }
@@ -74,7 +95,7 @@ class Bug {
       const rr = 1.7;
       this.pos.copy(this.center).addScaledVector(R, Math.cos(this.ang) * rr).addScaledVector(U, Math.sin(this.ang) * rr);
       let diff = Math.abs(((this.ang - this.gAng) % 6.2832 + 6.2832) % 6.2832); if (diff > Math.PI) diff = 6.2832 - diff;
-      this.vuln = diff < 0.5;
+      this.vuln = diff < 0.55;
       this.ring.position.copy(this.center); this.ring.scale.setScalar(rr * 2.5 * Math.min(1, this.age / 0.3));
       this.ring.material.rotation += d * 0.6;
       this.glow.position.copy(this.center).addScaledVector(R, Math.cos(this.gAng) * rr).addScaledVector(U, Math.sin(this.gAng) * rr);
@@ -82,22 +103,26 @@ class Bug {
       this.mat.color.setRGB(1, 1, 1).multiplyScalar(this.vuln ? 1.25 : 0.55);
       this.ring.material.opacity = this.vuln ? 0.35 : 1;
     }
+    if (this.role === 'missile') { this.mat.rotation += d * 6; scale *= 1 + Math.sin(this.age * 20) * 0.06; }
     if (this.dashT > 0) this.mat.color.setRGB(1.7, 0.55, 0.55);
-    else if (this.flash > 0) this.mat.color.setRGB(1 + this.flash, 1 + this.flash, 1 + this.flash);
+    else if (this.flash > 0) this.mat.color.setRGB(1 + this.flash * 2, 1 + this.flash * 2, 1 + this.flash * 2);
     else if (this.type !== 'loop') this.mat.color.setRGB(1, 1, 1);
     this.spr.position.copy(this.pos);
-    const sq = Math.sin(this.age * 14) * 0.07; // 꿈틀거림
-    this.spr.scale.set(scale * (1 + sq), scale * (1 - sq), 1);
-    this.mat.rotation = Math.sin(this.age * 5) * 0.12;
-    // 접촉 판정
-    const cd = this.pos.distanceTo(cam.position);
-    V3.subVectors(this.pos, cam.position);
-    if (cd < 1.7 || V3.dot(Game.camF) < -0.5) Game.contact(this);
+    if (this.role !== 'missile') {
+      const sq = Math.sin(this.age * 14) * 0.07; // 꿈틀거림
+      this.spr.scale.set(scale * (1 + sq), scale * (1 - sq), 1);
+      this.mat.rotation = Math.sin(this.age * 5) * 0.12;
+    } else this.spr.scale.set(scale, scale, 1);
+    // 엄폐물까지 도착 → 물기 / 미사일 명중
+    if (this.role !== 'shoot') {
+      const cd = this.pos.distanceTo(cam.position);
+      V3.subVectors(this.pos, cam.position);
+      if (cd < 1.9 || V3.dot(Game.camF) < -0.5) Game.contact(this);
+    }
   }
-  // 핫픽스: 플레이어와 같이 앞으로 흘러가며 둥실둥실, 6초 뒤 사라짐
+  // 핫픽스: 둥실둥실, 6초 뒤 사라짐
   updateItem(dt, d) {
     if (this.vx == null) this.vx = (RNG() < 0.5 ? -1 : 1) * rnd(0.6, 1.2);
-    this.pos.addScaledVector(Game.camF, Game.camSpeed * 0.75 * d);
     this.pos.addScaledVector(Game.camR, this.vx * d);
     this.pos.y += Math.sin(this.age * 2.5) * 0.4 * d;
     this.spr.position.copy(this.pos);
@@ -107,7 +132,7 @@ class Bug {
     this.mat.opacity = this.age > 4.8 ? (Math.floor(this.age * 10) % 2 ? 0.3 : 1) : 1;
     if (this.trojan) { const k = Math.sin(this.age * 9) > 0.6; this.mat.color.setRGB(1, k ? 0.55 : 1, k ? 0.55 : 1); } // 트로이 목마: 가끔 붉게
     V3.subVectors(this.pos, Game.camera.position);
-    if (this.age > 6.2 || V3.length() < 2 || V3.dot(Game.camF) < 0) this.remove();
+    if (this.age > 6.5 || V3.length() < 2 || V3.dot(Game.camF) < 0) this.remove();
   }
 }
 
@@ -234,7 +259,7 @@ const Boss = {
   start(seed) {
     this.dispose();
     this.r = mulberry32(seed + 555);
-    this.phase = 0; this.fixed = 0; this.ending = false; this.endT = 0; this.t = 0; this.spawnT = 2;
+    this.phase = 0; this.fixed = 0; this.ending = false; this.endT = 0; this.t = 0; this.spawnT = 2; this.atkT = 3; this.misT = 7;
     this.realDir = this.r() < 0.5 ? 1 : -1;
     this.snakes = [new Snake(true, 11, this.realDir, 0, 0)];
     this.startPhase(1);
@@ -246,7 +271,7 @@ const Boss = {
     const real = this.real();
     const cnt = n === 3 ? 6 : 5;
     const cand = shuffle(real.segs.filter((s) => !s.head && !s.err && !s.fixed), this.r).slice(0, cnt);
-    for (const s of cand) { s.err = true; s.hp = s.maxHp = Math.max(1, [0, 3, 4, 5][n] + Game.D.bossHp); real.setMode(s, 'err'); }
+    for (const s of cand) { s.err = true; s.hp = s.maxHp = Math.max(4, ([0, 3, 4, 5][n] + Game.D.bossHp) * 4); real.setMode(s, 'err'); }
     real.speed = [0, 0.3, 0.48, 0.6][n] * Game.D.bossSpd;
     if (n === 3) { // 몸이 두 마리로 복제 — 진짜만 오류 줄이 빛남
       const swap = this.r() < 0.5;
@@ -260,9 +285,9 @@ const Boss = {
     else { UI.banner('PHASE ' + n, n === 2 ? '속도 증가! 버그를 더 많이 뱉어요' : '복붙 오류! 진짜만 빛나요', 2.2); SND.play('phase'); Game.spawnHotfix(); }
   },
   targets() { const out = []; for (const sn of this.snakes) for (const s of sn.segs) if ((s.err || s.fake) && !s.fixed) out.push(s); return out; },
-  hit(s) {
+  hit(s, dmg = 1) {
     if (s.fake || !s.snake.real) { s.snake.setMode(s, 'fake'); return false; }
-    s.hp--; s.hitT = 0.12;
+    s.hp -= dmg; s.hitT = 0.08;
     if (s.hp > 0) return 'dmg';
     s.fixed = true; s.err = false; s.snake.setMode(s, 'fixed'); s.mat.color.setRGB(1, 1, 1); s.mesh.scale.set(4.4, 0.7, 1);
     this.fixed++;
@@ -292,6 +317,15 @@ const Boss = {
     }
     if (this.ending) return;
     if (this.transT > 0) { this.transT -= dt; if (this.transT <= 0) this.startPhase(this.phase + 1); return; }
+    // 머리에서 에러 패킷(예고 후, 숨으면 막힘) · 2단계부터 관통 미사일
+    if (Game.canEnemiesAct()) {
+      this.atkT -= dt * ws;
+      if (this.atkT <= 0) { this.atkT = [0, 3.6, 2.9, 2.4][this.phase] * Game.D.fireMul; Game.enemyAttack(this.real().segs[0]); }
+      if (this.phase >= 2) {
+        this.misT -= dt * ws;
+        if (this.misT <= 0 && Game.bugs.length < Game.maxOn()) { this.misT = (this.phase === 2 ? 7 : 5.5) * Game.D.fireMul; Game.spawnMissile(this.real().segs[0].pos.clone()); }
+      }
+    }
     if (this.phase >= 1) {
       this.spawnT -= dt * ws;
       if (this.spawnT <= 0 && Game.bugs.length < Game.maxOn()) {

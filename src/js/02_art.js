@@ -38,6 +38,7 @@ const BUGSTYLE = {
   ghost: { body: '#BFF6FF', dark: '#4a8a99', eye: '#FF4D5E', sym: '?', symc: '#12383f', rx: 7, ry: 6, legs: 3 },
   e404: { body: '#FF8A3D', dark: '#7a3210', eye: '#FFD34D', sym: '404', symc: '#2a0a00', rx: 8, ry: 6, legs: 3 },
   loop: { body: '#E05BFF', dark: '#5a1a70', eye: '#FFD34D', sym: '~', symc: '#25062e', rx: 7, ry: 7, legs: 2 },
+  throw: { body: '#FF6B3D', dark: '#7a2410', eye: '#FFD34D', sym: '!', symc: '#2a0700', rx: 7, ry: 6, legs: 3 },
 };
 function bugCanvas(type, frame) {
   const st = BUGSTYLE[type];
@@ -106,6 +107,12 @@ function buildTextures() {
     const img = new Image(); img.onload = () => { t.image = img; t.needsUpdate = true; }; img.src = ASSETS.item_hotfix;
     TEX.hotfix = [t, t];
   }
+  // 적 탄: 관통 미사일(3D) · 에러 패킷(화면)
+  TEX.missile = [texFromCanvas(missileCanvas(0)), texFromCanvas(missileCanvas(1))];
+  if (ASSETS.proj_missile) TEX.missile = [assetTex(ASSETS.proj_missile), null]; if (!TEX.missile[1]) TEX.missile[1] = TEX.missile[0];
+  IMG.packet = ASSETS.proj_packet ? imgOf(ASSETS.proj_packet) : packetCanvas();
+  // 분대 얼굴 (assets/portrait_*.png 있으면 교체)
+  IMG.portrait = SQUAD_LOOK.map((s, i) => (ASSETS['portrait_' + s.key] ? imgOf(ASSETS['portrait_' + s.key]) : portraitCanvas(s)));
   // 무한루프 껍질 링
   {
     const c = document.createElement('canvas'); c.width = c.height = 40; const g = c.getContext('2d');
@@ -196,7 +203,7 @@ function gunCanvas(stripe) {
   R(18, 4, 2, 2, '#FF4D5E');
   return c;
 }
-const ASSET_KEY = { basic: 'bug_basic', clone: 'bug_clone', mini: 'bug_mini', ghost: 'bug_ghost', e404: 'bug_404', loop: 'bug_loop' };
+const ASSET_KEY = { basic: 'bug_basic', clone: 'bug_clone', mini: 'bug_mini', ghost: 'bug_ghost', e404: 'bug_404', loop: 'bug_loop', throw: 'bug_throw' };
 function bugImgCanvas(type) { // DOM용 (하는 법/크래시 화면)
   const url = ASSETS[ASSET_KEY[type]];
   if (url) { const img = new Image(); img.src = url; img.className = 'asset'; return img; }
@@ -231,5 +238,48 @@ function hotTint(img) { // 과열된 총: 빨갛게 달아오른 색을 한 번�
   gr.addColorStop(0, 'rgba(255,240,120,.9)'); gr.addColorStop(0.35, 'rgba(255,90,30,.85)'); gr.addColorStop(0.62, 'rgba(200,40,20,.35)'); gr.addColorStop(0.78, 'rgba(160,20,20,0)'); // 손(오른쪽 아래)은 그대로
   g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height);
   _hot.set(img, c);
+  return c;
+}
+
+const IMG = {};
+function imgOf(url) { const im = new Image(); im.src = url; return im; }
+function assetTex(url) {
+  const t = new THREE.Texture(); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false;
+  const im = new Image(); im.onload = () => { t.image = im; t.needsUpdate = true; }; im.src = url;
+  return t;
+}
+function missileCanvas(frame) { // 보라색 무한루프 미사일, 정면에서 날아오는 모습
+  const c = document.createElement('canvas'); c.width = c.height = 24; const g = c.getContext('2d');
+  const P = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+  // 불꽃 (뒤쪽, 둥글게 번짐)
+  P(4, 4, 16, 16, frame ? 'rgba(255,211,77,.55)' : 'rgba(255,138,61,.45)');
+  P(6, 6, 12, 12, frame ? '#FFD34D' : '#FF8A3D');
+  // 탄두
+  P(7, 7, 10, 10, '#25062e'); P(8, 8, 8, 8, '#E05BFF'); P(9, 9, 3, 2, '#f4c8ff');
+  drawGlyphs(g, '~', 12, 12.5, '#25062e');
+  return c;
+}
+function packetCanvas() { // 빨간 봉투 모양 에러 패킷
+  const c = document.createElement('canvas'); c.width = 20; c.height = 14; const g = c.getContext('2d');
+  g.fillStyle = '#2a070c'; g.fillRect(0, 0, 20, 14);
+  g.fillStyle = '#FF4D5E'; g.fillRect(1, 1, 18, 12);
+  g.fillStyle = '#b3243a'; for (let i = 0; i < 9; i++) { g.fillRect(1 + i, 1 + i * 0.6, 1, 1); g.fillRect(18 - i, 1 + i * 0.6, 1, 1); }
+  drawGlyphs(g, '!', 10, 8, '#FFD34D');
+  return c;
+}
+// 분대 얼굴 (코드 그림 대체용): 모자·헤드셋 색으로 구분
+const SQUAD_LOOK = [
+  { key: 'dot', hair: '#2a2f28', cap: '#C6F432', skin: '#f2c9a0', acc: '#C6F432' },
+  { key: 'rex', hair: '#7a3210', cap: '#FFD34D', skin: '#e8b48a', acc: '#FFD34D' },
+  { key: 'pin', hair: '#1d2f6e', cap: '#6fe7ff', skin: '#f6d2b0', acc: '#6fe7ff' },
+];
+function portraitCanvas(s) {
+  const c = document.createElement('canvas'); c.width = c.height = 24; const g = c.getContext('2d');
+  const P = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+  P(0, 0, 24, 24, '#151913');
+  P(5, 18, 14, 6, '#3a4037'); P(6, 18, 12, 1, s.acc); // 어깨
+  P(7, 7, 10, 11, s.skin); P(6, 5, 12, 4, s.hair); P(6, 4, 12, 2, s.cap); P(5, 6, 3, 2, s.cap); // 얼굴·머리·모자
+  P(9, 11, 2, 2, '#10140c'); P(13, 11, 2, 2, '#10140c'); P(10, 15, 4, 1, '#7a3a2a'); // 눈·입
+  P(4, 9, 2, 6, '#2a2f28'); P(18, 9, 2, 6, '#2a2f28'); P(4, 14, 4, 1, s.acc); // 헤드셋
   return c;
 }

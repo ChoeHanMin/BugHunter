@@ -11,7 +11,10 @@ const src = (p) => fs.readFileSync(path.join(__dirname, 'src', p), 'utf8');
 const ASSET_SPEC = {
   bug_basic: { size: 96 }, bug_clone: { size: 96 }, bug_mini: { size: 96 },
   bug_ghost: { size: 96 }, bug_404: { size: 96 }, bug_loop: { size: 96 },
-  logo: { width: 900 }, item_hotfix: { size: 96 }, gun: { width: 640 }, gun_refactor: { width: 640 },
+  logo: { width: 900 }, item_hotfix: { size: 96 }, gun: { width: 640 }, gun_refactor: { width: 640 }, gun_sniper: { width: 640 },
+  bug_throw: { size: 96 }, proj_missile: { size: 64 }, proj_packet: { size: 64 },
+  portrait_dot: { size: 128 }, portrait_rex: { size: 128 }, portrait_pin: { size: 128 },
+  cover: { width: 800 }, cover_forest: { width: 800 }, cover_city: { width: 800 }, cover_subway: { width: 800 }, cover_physics: { width: 800 }, cover_boss: { width: 800 },
 };
 
 async function loadAssets() {
