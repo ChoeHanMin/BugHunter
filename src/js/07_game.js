@@ -158,7 +158,7 @@ const Game = {
   fpLayout() {
     const im = this.fpImage(); if (!im) return null;
     const W = this.W, H = this.H, a = this.aimPoint();
-    const w = Math.min(W * 0.46, H * 0.62), h = w * im.naturalHeight / im.naturalWidth;
+    const w = W < H ? W * 0.62 : Math.min(W * 0.46, H * 0.62), h = w * im.naturalHeight / im.naturalWidth; // 세로 화면은 크게
     const ax = (a.x - W / 2) / W, ay = (a.y - H / 2) / H;
     const bob = Math.sin(this.time * 3.2) * h * 0.012;
     const flip = this.hudFlipped;
