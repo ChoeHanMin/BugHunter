@@ -61,7 +61,7 @@ const UI = {
     this.only(); $('#hud').classList.remove('hidden');
     // 분대 얼굴 그리기
     $$('.mem').forEach((b, i) => { const c = b.querySelector('.pt'), im = IMG.portrait && IMG.portrait[i]; if (!im) return;
-      const draw = () => { const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.clearRect(0, 0, 24, 24); g.drawImage(im, 0, 0, 24, 24); };
+      const draw = () => { const g = c.getContext('2d'); const big = im instanceof HTMLImageElement; g.imageSmoothingEnabled = big; g.imageSmoothingQuality = 'high'; g.clearRect(0, 0, 64, 64); g.drawImage(im, 0, 0, 64, 64); };
       if (im instanceof HTMLImageElement && !im.complete) im.onload = draw; else draw(); });
     $('#stageLbl').innerHTML = 'STAGE ' + Game.S.def.id + ' · ' + Game.S.def.name + `<span class="diffchip" style="color:${Game.D.key === 'hard' ? '#FF4D5E' : '#aab2a3'}">${Game.D.name}</span>`;
     $('#helpBadge').classList.toggle('hidden', !Game.run.help[Game.run.stage]);

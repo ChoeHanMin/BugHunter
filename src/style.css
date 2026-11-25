@@ -194,3 +194,4 @@ button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
 .touch .mem .k{display:none}
 .wpn.rb{min-width:64px;height:62px}
 @media (max-width:640px){.mem{width:68px;height:56px;grid-template-columns:24px 1fr}.mem .pt{width:24px;height:24px}.mem .mn{font-size:12px}.wpn.rb{min-width:54px;height:56px}}
+.mem .pt{image-rendering:auto}

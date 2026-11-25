@@ -46,7 +46,7 @@ const Game = {
     buildTextures(); initGeo();
     // 하는 법 ③: 분대 얼굴
     const hp = $('#howPic3');
-    if (hp) IMG.portrait.forEach((im) => { const c = document.createElement('canvas'); c.width = c.height = 24; const d = () => { const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(im, 0, 0, 24, 24); }; if (im instanceof HTMLImageElement && !im.complete) im.onload = d; else d(); hp.append(c); });
+    if (hp) IMG.portrait.forEach((im) => { const c = document.createElement('canvas'); c.width = c.height = 64; const d = () => { const g = c.getContext('2d'); g.imageSmoothingEnabled = im instanceof HTMLImageElement; g.drawImage(im, 0, 0, 64, 64); }; if (im instanceof HTMLImageElement && !im.complete) im.onload = d; else d(); hp.append(c); });
     FX.init($('#gl'));
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(70, 1, 0.1, 400);
@@ -1175,13 +1175,18 @@ const Game = {
   drawCoverImg(g) {
     const im = this.coverImg(); if (!im || this.S.phase === 'move' || this.state === 'clearing') return;
     const W = this.W, H = this.H;
-    let w = W * 1.08, h = w * im.naturalHeight / im.naturalWidth;
-    if (h < H * 0.5) { h = H * 0.5; w = h * im.naturalWidth / im.naturalHeight; }
+    // 가로 폭에 맞추고, 세로가 모자라면 아래로 쌓아서 채움 (세로 폰에서 크게 확대되지 않게)
+    const w = Math.max(W * 1.08, 520), h = w * im.naturalHeight / im.naturalWidth;
     const y = lerp(H * 0.55, H * 0.8, this.outK) + (this.cover.broken ? H * 0.06 : 0) + Math.sin(this.time * 3) * 1.5;
     g.save(); g.imageSmoothingEnabled = false;
     if (this.cover.broken) { g.translate(W / 2, y); g.rotate(0.05); g.translate(-W / 2, -y); g.globalAlpha = 0.85; }
-    g.drawImage(im, (W - w) / 2, y, w, h);
-    if (this.cover.broken) { g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect((W - w) / 2, y, w, h); }
+    for (let yy = y, k = 0; yy < H + 20 && k < 6; yy += h * 0.9, k++) {
+      const off = k % 2 ? w * 0.18 : 0; // 줄마다 살짝 엇갈리게
+      g.drawImage(im, (W - w) / 2 - off, yy, w, h);
+      if (off) g.drawImage(im, (W - w) / 2 - off + w, yy, w, h);
+      if (k > 0) { g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, yy, W, h); } // 아래 줄은 약간 어둡게
+    }
+    if (this.cover.broken) { g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(0, y, W, H - y); }
     g.restore();
   },
   drawCoverBar(g) {
