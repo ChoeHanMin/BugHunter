@@ -2064,7 +2064,7 @@ const Game = {
   updateAttacks(dt, ws) {
     for (const a of this.attacks) {
       a.t += dt * ws;
-      if (a.src && a.src.alive === false && a.t < a.dur * 0.6) { a.done = true; this.pop(a.x, a.y, '취소!', '#9CFF7A'); continue; } // 쏘기 전에 잡으면 취소
+      if (a.src && a.src.alive === false && a.t < a.dur * 0.4) { a.done = true; this.pop(a.x, a.y, '취소!', '#9CFF7A'); continue; } // 쏘기 전에 잡으면 취소
       if (a.t >= a.dur) {
         a.done = true;
         const exposed = this.outK > 0.45 || this.cover.broken;
