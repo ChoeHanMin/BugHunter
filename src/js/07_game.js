@@ -11,9 +11,9 @@ const STAGES = [
 const COVER_U = [0.1, 0.45, 0.8]; // 엄폐 지점 (레일 위치)
 // 분대: 직접 조작 1명 + 나머지 자동 사격
 const SQUAD = [
-  { key: 'dot', name: '도트', role: '디버거', kind: 'rifle', label: '연사', color: '#C6F432', rate: 9, dmg: 1, mag: 36, reload: 1.1, heat: 2.4, aiRate: 1.5, aiDmg: 1 },
-  { key: 'rex', name: '렉스', role: '리팩터', kind: 'shotgun', label: '산탄', color: '#FFD34D', rate: 1.6, dmg: 1, pellets: 7, mag: 8, reload: 1.5, heat: 13, aiRate: 0.6, aiDmg: 2 },
-  { key: 'pin', name: '핀', role: '프로파일러', kind: 'sniper', label: '저격', color: '#6fe7ff', charge: 0.85, dmg: 8, mag: 5, reload: 1.6, heat: 22, aiRate: 0.3, aiDmg: 4 },
+  { key: 'dot', name: '도트', role: '디버거', kind: 'rifle', label: '연사', color: '#C6F432', rate: 9, dmg: 1, mag: 36, reload: 1.1, heat: 2.4, aiRate: 1.0, aiDmg: 1 },
+  { key: 'rex', name: '렉스', role: '리팩터', kind: 'shotgun', label: '산탄', color: '#FFD34D', rate: 1.6, dmg: 1, pellets: 7, mag: 8, reload: 1.5, heat: 13, aiRate: 0.4, aiDmg: 2 },
+  { key: 'pin', name: '핀', role: '프로파일러', kind: 'sniper', label: '저격', color: '#6fe7ff', charge: 0.85, dmg: 8, mag: 5, reload: 1.6, heat: 22, aiRate: 0.22, aiDmg: 4 },
 ];
 const GLITCH = {
   tear: { name: '화면 찢어짐', dur: 4 },
@@ -565,7 +565,7 @@ const Game = {
     if (def.id === 1) { covers[0].waves[0] = [{ type: 'basic', intro: true }, { type: 'basic' }, { type: 'basic' }]; covers[0].waves[1] = [{ type: 'throw', intro: true }, { type: 'throw' }, { type: 'basic' }]; }
     else for (const t of intro.reverse()) covers[0].waves[0].unshift({ type: t, intro: true });
     // 웨이브 안에서 시간차
-    for (const c of covers) for (const w of c.waves) { let at = 0.6; for (const e of w) { e.at = at; at += e.intro ? 2.6 : rnd(0.7, 1.5); } }
+    for (const c of covers) for (const w of c.waves) { let at = 0.6; for (const e of w) { e.at = at; at += e.intro ? 2.6 : rnd(0.45, 1.0); } }
     // 핫픽스
     covers[1].waves[0].push({ type: 'hotfix', at: 3.5 });
     if (this.D.hotfix > 0) covers[2].waves[0].push({ type: 'hotfix', at: 4 });

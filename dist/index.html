@@ -1286,13 +1286,13 @@ const World = {
 // role: rush(엄폐물까지 달려와 물기 — 숨어도 맞음) / shoot(멀리 서서 예고 후 에러 패킷 — 숨으면 막힘)
 //       missile(관통 미사일 — 숨어도 맞음, 쏴서 떨어뜨려야 함) / item(핫픽스)
 const BUGDEF = {
-  basic: { name: '기본 버그', role: 'rush', hp: 3, pts: 100, spd: 3.0, size: 1.8, dmg: 14 },
-  clone: { name: '복제 버그', role: 'rush', hp: 4, pts: 0, spd: 2.7, size: 2.0, dmg: 14, tip: '맞으면 둘로 분열해요!' },
-  mini: { name: '작은 복제', role: 'rush', hp: 1, pts: 50, spd: 3.8, size: 1.15, dmg: 7 },
-  throw: { name: 'throw 버그', role: 'shoot', hp: 4, pts: 150, spd: 3.6, size: 1.8, dmg: 10, fire: [2.8, 4.4], tip: '빨간 원이 뜨면 손을 떼서 숨으세요!' },
-  ghost: { name: '투명 버그', role: 'shoot', hp: 3, pts: 200, spd: 3.2, size: 1.8, dmg: 10, fire: [3.2, 4.8], tip: '보일 때만 맞아요' },
-  e404: { name: '404 버그', role: 'shoot', hp: 4, pts: 250, spd: 3.2, size: 1.9, dmg: 10, fire: [3.0, 4.6], tip: '조준선이 1초 겹치면 순간이동!' },
-  loop: { name: '무한루프 버그', role: 'shoot', hp: 6, pts: 300, spd: 2.6, size: 1.8, dmg: 18, fire: [5.5, 7.5], missile: true, tip: '관통 미사일을 쏴요! 숨어도 맞으니 미사일을 쏴서 떨어뜨리세요' },
+  basic: { name: '기본 버그', role: 'rush', hp: 5, pts: 100, spd: 3.0, size: 1.8, dmg: 14 },
+  clone: { name: '복제 버그', role: 'rush', hp: 6, pts: 0, spd: 2.7, size: 2.0, dmg: 14, tip: '맞으면 둘로 분열해요!' },
+  mini: { name: '작은 복제', role: 'rush', hp: 2, pts: 50, spd: 3.8, size: 1.15, dmg: 7 },
+  throw: { name: 'throw 버그', role: 'shoot', hp: 8, pts: 150, spd: 4.2, size: 1.8, dmg: 10, fire: [2.0, 3.3], tip: '빨간 원이 뜨면 손을 떼서 숨으세요!' },
+  ghost: { name: '투명 버그', role: 'shoot', hp: 6, pts: 200, spd: 4, size: 1.8, dmg: 10, fire: [2.3, 3.6], tip: '보일 때만 맞아요' },
+  e404: { name: '404 버그', role: 'shoot', hp: 8, pts: 250, spd: 4, size: 1.9, dmg: 10, fire: [2.2, 3.5], tip: '조준선이 1초 겹치면 순간이동!' },
+  loop: { name: '무한루프 버그', role: 'shoot', hp: 10, pts: 300, spd: 3.4, size: 1.8, dmg: 18, fire: [4.2, 6], missile: true, tip: '관통 미사일을 쏴요! 숨어도 맞으니 미사일을 쏴서 떨어뜨리세요' },
   missile: { name: '관통 미사일', role: 'missile', hp: 2, pts: 50, spd: 4.4, size: 1.3, dmg: 16 },
   hotfix: { name: '핫픽스', role: 'item', hp: 1, pts: 0, spd: 0, size: 2.1, dmg: 0, tip: '쏘면 안정성 +20, 화면 고장 모두 복구!' },
 };
@@ -1309,7 +1309,7 @@ class Bug {
     this.ox = opt.ox != null ? opt.ox : rnd(-1.4, 1.4); this.oy = opt.oy != null ? opt.oy : rnd(-0.6, 0.6);
     this.wf = rnd(1.2, 2.4); this.wa = rnd(0.6, 1.4); this.ph = rnd(0, 6.28);
     this.sep = opt.sep ? opt.sep.clone() : null;
-    this.fireT = this.def.fire ? rnd(1.2, 2.2) : 0;
+    this.fireT = this.def.fire ? rnd(0.5, 1.1) : 0; // 자리 잡자마자 곧 공격
     this.hover = 0; this.vis = true; this.vuln = true; this.flash = 0;
     this.sx = -999; this.sy = -999; this.sr = 0; this.onScreen = false;
     this.mat = new THREE.SpriteMaterial({ map: TEX[type][0], transparent: true, fog: false });
@@ -1607,13 +1607,13 @@ const Boss = {
       if (this.atkT <= 0) { this.atkT = [0, 3.6, 2.9, 2.4][this.phase] * Game.D.fireMul; Game.enemyAttack(this.real().segs[0]); }
       if (this.phase >= 2) {
         this.misT -= dt * ws;
-        if (this.misT <= 0 && Game.bugs.length < Game.maxOn()) { this.misT = (this.phase === 2 ? 7 : 5.5) * Game.D.fireMul; Game.spawnMissile(this.real().segs[0].pos.clone()); }
+        if (this.misT <= 0 && Game.bugs.length < Game.maxOn()) { this.misT = (this.phase === 2 ? 8 : 6.5) * Game.D.fireMul; Game.spawnMissile(this.real().segs[0].pos.clone()); }
       }
     }
     if (this.phase >= 1) {
       this.spawnT -= dt * ws;
       if (this.spawnT <= 0 && Game.bugs.length < Game.maxOn()) {
-        this.spawnT = [0, 4.5, 2.4, 2.8][this.phase] * Game.D.bossSpawn;
+        this.spawnT = [0, 5.5, 3.4, 3.6][this.phase] * Game.D.bossSpawn;
         const head = this.real().segs[0].pos;
         const type = this.phase === 3 && this.r() < 0.4 ? 'clone' : 'basic';
         Game.spawnBugAt(type, head.clone(), {});
@@ -1636,9 +1636,9 @@ const STAGES = [
 const COVER_U = [0.1, 0.45, 0.8]; // 엄폐 지점 (레일 위치)
 // 분대: 직접 조작 1명 + 나머지 자동 사격
 const SQUAD = [
-  { key: 'dot', name: '도트', role: '디버거', kind: 'rifle', label: '연사', color: '#C6F432', rate: 9, dmg: 1, mag: 36, reload: 1.1, heat: 2.4, aiRate: 1.5, aiDmg: 1 },
-  { key: 'rex', name: '렉스', role: '리팩터', kind: 'shotgun', label: '산탄', color: '#FFD34D', rate: 1.6, dmg: 1, pellets: 7, mag: 8, reload: 1.5, heat: 13, aiRate: 0.6, aiDmg: 2 },
-  { key: 'pin', name: '핀', role: '프로파일러', kind: 'sniper', label: '저격', color: '#6fe7ff', charge: 0.85, dmg: 8, mag: 5, reload: 1.6, heat: 22, aiRate: 0.3, aiDmg: 4 },
+  { key: 'dot', name: '도트', role: '디버거', kind: 'rifle', label: '연사', color: '#C6F432', rate: 9, dmg: 1, mag: 36, reload: 1.1, heat: 2.4, aiRate: 1.0, aiDmg: 1 },
+  { key: 'rex', name: '렉스', role: '리팩터', kind: 'shotgun', label: '산탄', color: '#FFD34D', rate: 1.6, dmg: 1, pellets: 7, mag: 8, reload: 1.5, heat: 13, aiRate: 0.4, aiDmg: 2 },
+  { key: 'pin', name: '핀', role: '프로파일러', kind: 'sniper', label: '저격', color: '#6fe7ff', charge: 0.85, dmg: 8, mag: 5, reload: 1.6, heat: 22, aiRate: 0.22, aiDmg: 4 },
 ];
 const GLITCH = {
   tear: { name: '화면 찢어짐', dur: 4 },
@@ -2190,7 +2190,7 @@ const Game = {
     if (def.id === 1) { covers[0].waves[0] = [{ type: 'basic', intro: true }, { type: 'basic' }, { type: 'basic' }]; covers[0].waves[1] = [{ type: 'throw', intro: true }, { type: 'throw' }, { type: 'basic' }]; }
     else for (const t of intro.reverse()) covers[0].waves[0].unshift({ type: t, intro: true });
     // 웨이브 안에서 시간차
-    for (const c of covers) for (const w of c.waves) { let at = 0.6; for (const e of w) { e.at = at; at += e.intro ? 2.6 : rnd(0.7, 1.5); } }
+    for (const c of covers) for (const w of c.waves) { let at = 0.6; for (const e of w) { e.at = at; at += e.intro ? 2.6 : rnd(0.45, 1.0); } }
     // 핫픽스
     covers[1].waves[0].push({ type: 'hotfix', at: 3.5 });
     if (this.D.hotfix > 0) covers[2].waves[0].push({ type: 'hotfix', at: 4 });
