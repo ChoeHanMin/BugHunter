@@ -11,7 +11,7 @@ const src = (p) => fs.readFileSync(path.join(__dirname, 'src', p), 'utf8');
 const ASSET_SPEC = {
   bug_basic: { size: 96 }, bug_clone: { size: 96 }, bug_mini: { size: 96 },
   bug_ghost: { size: 96 }, bug_404: { size: 96 }, bug_loop: { size: 96 },
-  logo: { width: 900 }, item_hotfix: { size: 96 }, gun: { width: 512 },
+  logo: { width: 900 }, item_hotfix: { size: 96 }, gun: { width: 640 }, gun_refactor: { width: 640 },
 };
 
 async function loadAssets() {
@@ -33,6 +33,17 @@ async function loadAssets() {
     }
     out[name] = `data:${mime};base64,${buf.toString('base64')}`;
     console.log(`  그림 ${name}: ${(buf.length / 1024).toFixed(1)} KB`);
+  }
+  // 효과음 파일 (그대로 넣음, 짧게!)
+  for (const name of ['sfx_shot', 'sfx_spread']) {
+    for (const [ext, mime] of [['mp3', 'audio/mpeg'], ['ogg', 'audio/ogg'], ['wav', 'audio/wav']]) {
+      const f = path.join(dir, `${name}.${ext}`);
+      if (!fs.existsSync(f)) continue;
+      const buf = fs.readFileSync(f);
+      out[name] = `data:${mime};base64,${buf.toString('base64')}`;
+      console.log(`  소리 ${name}: ${(buf.length / 1024).toFixed(1)} KB` + (buf.length > 150 * 1024 ? '  ← 너무 큼, 1초 이하로 잘라 주세요' : ''));
+      break;
+    }
   }
   return out;
 }

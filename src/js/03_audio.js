@@ -15,6 +15,7 @@ const SND = {
       const d = this.noise.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
       this.apply();
+      this.loadSamples();
     } catch (e) { this.ctx = null; }
   },
   apply() {
@@ -46,12 +47,43 @@ const SND = {
     s.connect(f); f.connect(g); g.connect(dest || this.sfxG);
     s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
   },
+  // assets/sfx_*.mp3|ogg|wav 가 있으면 그 소리를 씀
+  bufs: {},
+  loadSamples() {
+    for (const k of ['sfx_shot', 'sfx_spread']) {
+      const url = ASSETS[k]; if (!url || this.bufs[k]) continue;
+      this.bufs[k] = 'loading';
+      try {
+        const bin = atob(url.split(',')[1]); const arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        this.ctx.decodeAudioData(arr.buffer, (b) => { this.bufs[k] = b; }, () => { this.bufs[k] = null; });
+      } catch (e) { this.bufs[k] = null; }
+    }
+  },
+  sample(k, vol) {
+    const b = this.bufs[k]; if (!b || b === 'loading') return false;
+    const s = this.ctx.createBufferSource(), g = this.ctx.createGain();
+    s.buffer = b; s.playbackRate.value = 0.96 + Math.random() * 0.08; g.gain.value = vol;
+    s.connect(g); g.connect(this.sfxG); s.start(); return true;
+  },
   play(name, p = 0) {
     if (!this.ctx || !settings.sound) return;
     const now = this.ctx.currentTime;
     switch (name) {
-      case 'shot': this.tone(1400, 0.06, 'square', 0.12, 700); break; // 짧은 삑
-      case 'spread': this.tone(900, 0.12, 'sawtooth', 0.14, 300); this.noiseHit(0.08, 0.15, 'highpass', 3000); break;
+      case 'shot': // 패치 탄: 딸깍 + 뿅 하강 + 낮은 쿵 + 디지털 꼬리
+        if (this.sample('sfx_shot', 0.9)) break;
+        this.noiseHit(0.025, 0.22, 'highpass', 4500);
+        this.tone(1900, 0.075, 'square', 0.11, 420);
+        this.tone(190, 0.09, 'sine', 0.3, 55);
+        this.tone(2637, 0.05, 'triangle', 0.05, 2093, now + 0.035);
+        break;
+      case 'spread': // 리팩터: 묵직한 확산음 + 7발 틱
+        if (this.sample('sfx_spread', 1)) break;
+        this.noiseHit(0.16, 0.32, 'bandpass', 1400);
+        this.tone(760, 0.16, 'sawtooth', 0.13, 150);
+        this.tone(130, 0.18, 'sine', 0.4, 42);
+        for (let i = 0; i < 7; i++) this.tone(2200 + i * 180, 0.03, 'square', 0.04, null, now + 0.02 + i * 0.012);
+        break;
       case 'hit': { const m = 1 + Math.min(p, 20) * 0.035; this.tone(1568 * m, 0.18, 'triangle', 0.26); this.tone(2093 * m, 0.22, 'sine', 0.16, null, now + 0.05); break; } // 맑은 띵 (연속일수록 음이 올라감)
       case 'perfect': this.tone(3136, 0.16, 'sine', 0.14, null, now + 0.04); this.tone(4186, 0.2, 'sine', 0.1, null, now + 0.1); break;
       case 'warn': this.tone(880, 0.06, 'square', 0.07); this.tone(660, 0.06, 'square', 0.07, null, now + 0.08); break;

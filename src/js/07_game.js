@@ -131,9 +131,42 @@ const Game = {
   gunLen() { return Math.min(Math.max(this.W, this.H) * 0.2, Math.min(this.W, this.H) * 0.42); },
   aimPoint() { return this.ptr.has ? { x: this.ptr.x, y: this.ptr.y } : { x: this.W / 2, y: this.H / 2 }; },
   gunPos() { // 총구 위치
+    const fp = this.fpLayout();
+    if (fp) return fp.muzzle;
     const p = this.gunPivot(), a = this.aimPoint();
     const ang = Math.atan2(a.y - p.y, a.x - p.x), L = this.gunLen() * (0.72 - this.recoil * 0.08);
     return { x: p.x + Math.cos(ang) * L, y: p.y + Math.sin(ang) * L };
+  },
+  // 1인칭 총 그림(assets/gun.png): 오른쪽 아래에서 손이 들고 있는 모습, 총구는 왼쪽 위
+  loadGunAssets() {
+    if (this.gunImgs) return;
+    this.gunImgs = [gunCanvas('#C6F432'), gunCanvas('#FFD34D')];
+    this.fpImgs = [];
+    [ASSETS.gun, ASSETS.gun_refactor].forEach((url, i) => {
+      if (!url) return;
+      const im = new Image();
+      im.onload = () => { im.muzzle = findMuzzle(im); };
+      im.src = url; this.fpImgs[i] = im;
+    });
+  },
+  fpImage() {
+    this.loadGunAssets();
+    const pickI = this.weapon === 1 && this.fpImgs[1] ? 1 : 0;
+    const im = this.fpImgs[pickI];
+    return im && im.complete && im.naturalWidth && im.muzzle ? im : null;
+  },
+  fpLayout() {
+    const im = this.fpImage(); if (!im) return null;
+    const W = this.W, H = this.H, a = this.aimPoint();
+    const w = Math.min(W * 0.46, H * 0.62), h = w * im.naturalHeight / im.naturalWidth;
+    const ax = (a.x - W / 2) / W, ay = (a.y - H / 2) / H;
+    const bob = Math.sin(this.time * 3.2) * h * 0.012;
+    const flip = this.hudFlipped;
+    let x = W - w * 0.92 + ax * w * 0.14 + this.recoil * w * 0.05;
+    const y = H - h * 0.9 + ay * h * 0.1 + this.recoil * h * 0.07 + bob;
+    if (flip) x = W - x - w;
+    const mx = flip ? x + w - im.muzzle.x * w : x + im.muzzle.x * w;
+    return { im, x, y, w, h, flip, muzzle: { x: mx, y: y + im.muzzle.y * h } };
   },
   fireSingle(x, y) {
     this.run.st.shots++; this.S.shots++;
@@ -634,17 +667,28 @@ const Game = {
     if (flip !== this.hudFlipped) { this.hudFlipped = flip; $('#hud').classList.toggle('flipped', flip); }
   },
   drawGun(g) {
-    if (!this.gunImgs) {
-      this.gunImgs = [gunCanvas('#C6F432'), gunCanvas('#FFD34D')];
-      if (ASSETS.gun) { const im = new Image(); im.src = ASSETS.gun; this.gunAsset = im; }
+    this.loadGunAssets();
+    const fp = this.fpLayout();
+    if (fp) {
+      g.save(); g.imageSmoothingEnabled = true;
+      if (fp.flip) { g.translate(fp.x + fp.w, fp.y); g.scale(-1, 1); g.drawImage(fp.im, 0, 0, fp.w, fp.h); }
+      else g.drawImage(fp.im, fp.x, fp.y, fp.w, fp.h);
+      g.restore();
+      if (this.recoil > 0.5) { // 총구 빛
+        const m = fp.muzzle, r = fp.w * 0.09 * this.recoil;
+        const gr = g.createRadialGradient(m.x, m.y, 0, m.x, m.y, r);
+        gr.addColorStop(0, 'rgba(255,255,230,.95)'); gr.addColorStop(0.4, this.weapon === 1 ? 'rgba(255,211,77,.8)' : 'rgba(198,244,50,.8)'); gr.addColorStop(1, 'rgba(198,244,50,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(m.x, m.y, r, 0, 6.283); g.fill();
+      }
+      return;
     }
     const p = this.gunPivot(), a = this.aimPoint(), L = this.gunLen();
     const ang = Math.atan2(a.y - p.y, a.x - p.x);
-    const img = this.gunAsset && this.gunAsset.complete && this.gunAsset.naturalWidth ? this.gunAsset : this.gunImgs[this.weapon === 1 && this.refReady() ? 1 : 0];
+    const img = this.gunImgs[this.weapon === 1 && this.refReady() ? 1 : 0];
     const h = L * img.height / img.width;
     g.save(); g.translate(p.x, p.y); g.rotate(ang);
     if (Math.cos(ang) < 0) g.scale(1, -1);
-    g.imageSmoothingEnabled = img !== this.gunAsset ? false : true;
+    g.imageSmoothingEnabled = false;
     const back = this.recoil * L * 0.08;
     g.drawImage(img, -L * 0.2 - back, -h * 0.55, L, h);
     if (this.recoil > 0.6) { // 총구 불꽃

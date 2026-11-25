@@ -205,3 +205,17 @@ function bugImgCanvas(type) { // DOM용 (하는 법/크래시 화면)
   c.getContext('2d').drawImage(src, 0, 0);
   return c;
 }
+
+function findMuzzle(img) {
+  const c = document.createElement('canvas'), n = 96;
+  c.width = n; c.height = Math.max(1, Math.round(n * img.naturalHeight / img.naturalWidth));
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0, c.width, c.height);
+  let best = null, bd = 1e9;
+  try {
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+      if (d[(y * c.width + x) * 4 + 3] > 128 && x + y < bd) { bd = x + y; best = { x: (x + 1.5) / c.width, y: (y + 1.5) / c.height }; }
+    }
+  } catch (e) { /* 읽기 실패 시 기본값 */ }
+  return best || { x: 0.12, y: 0.12 };
+}
