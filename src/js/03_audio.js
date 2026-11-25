@@ -23,7 +23,7 @@ const SND = {
     const t = this.ctx.currentTime;
     this.master.gain.setTargetAtTime(settings.sound ? 0.9 : 0, t, 0.02);
     this.sfxG.gain.setTargetAtTime(settings.sfx * 0.55, t, 0.02);
-    this.musG.gain.setTargetAtTime(settings.music * 0.42, t, 0.02);
+    this.musG.gain.setTargetAtTime(settings.music * 0.7, t, 0.02);
   },
   tone(f, dur, type = 'square', vol = 0.3, f2 = null, when = 0, dest = null, attack = 0.004) {
     if (!this.ctx) return;
@@ -106,25 +106,44 @@ const SND = {
   },
 };
 
-// 쌓이는 음악: 드럼 → 베이스 → 화음 → 멜로디 → 전체 합주
+// ---------- 음악: 단조 오케스트라풍 합성 ----------
+// 타이틀: 느리고 웅장한 테마 / 스테이지: 비장한 행진 (고칠수록 악기가 쌓임) / 보스: 빠르고 긴박
 const MUS = {
-  on: false, step: 0, next: 0, timer: null, tempo: 112, layer: 0, boss: false, crash: false,
-  tempoMul: 1, pitchMul: 1, slow: false, keyRoot: 220, minor: false, mel: [], prog: [0, 5, 3, 4],
-  start(stageIdx, seed) {
-    if (!SND.ctx) return;
-    this.stop();
-    const roots = [220, 196, 174.6, 233.1, 164.8];
-    this.keyRoot = roots[stageIdx % 5];
-    this.boss = stageIdx === 4; this.minor = stageIdx >= 2;
-    this.tempo = this.boss ? 152 : 108 + stageIdx * 6;
-    this.prog = this.boss ? [0, 0, 5, 6] : this.minor ? [0, 5, 3, 4] : [0, 3, 4, 3];
-    const r = mulberry32(seed + stageIdx * 31);
-    this.mel = []; for (let i = 0; i < 32; i++) this.mel.push(r() < 0.55 ? Math.floor(r() * 7) : null);
-    this.layer = 0; this.crash = false; this.tempoMul = 1; this.pitchMul = 1; this.slow = false;
+  on: false, step: 0, next: 0, timer: null, tempo: 100, layer: 0, mode: 'stage', crash: false,
+  tempoMul: 1, pitchMul: 1, slow: false, keyRoot: 146.83, prog: [0, 5, 2, 6], theme: null,
+  SCALE: [0, 2, 3, 5, 7, 8, 10], // 자연 단음계
+  // 영웅 테마: [시작 16분음표 위치, 음계 도수, 길이] — 8마디
+  THEME_A: [[0, 0, 6], [6, 4, 2], [8, 7, 8], [16, 5, 12], [28, 4, 4], [32, 2, 6], [38, 4, 2], [40, 2, 8], [48, 1, 8], [56, -1, 8],
+    [64, 0, 4], [68, 4, 4], [72, 7, 8], [80, 8, 8], [88, 7, 4], [92, 5, 4], [96, 7, 12], [108, 9, 4], [112, 8, 8], [120, 6, 8]],
+  THEME_B: [[0, 4, 4], [4, 4, 2], [6, 4, 2], [8, 7, 8], [16, 5, 4], [20, 4, 4], [24, 5, 8], [32, 4, 4], [36, 2, 4], [40, 4, 8], [48, 3, 8], [56, 1, 8],
+    [64, 4, 4], [68, 4, 2], [70, 4, 2], [72, 9, 8], [80, 8, 4], [84, 7, 4], [88, 8, 8], [96, 7, 6], [102, 6, 2], [104, 4, 8], [112, 6, 8], [120, 7, 8]],
+  _go() {
+    this.crash = false; this.tempoMul = 1; this.pitchMul = 1; this.slow = false;
     this.step = 0; this.next = SND.ctx.currentTime + 0.08; this.on = true;
     SND.musG.gain.cancelScheduledValues(SND.ctx.currentTime);
     SND.apply();
     this.timer = setInterval(() => this.tick(), 25);
+  },
+  startTitle() {
+    if (!SND.ctx) return;
+    if (this.on && this.mode === 'title') return;
+    this.stop();
+    this.mode = 'title'; this.keyRoot = 146.83; this.tempo = 74; this.prog = [0, 5, 2, 6, 0, 5, 3, 4];
+    this.theme = this.THEME_A; this.layer = 4;
+    this._go();
+  },
+  start(stageIdx, seed) {
+    if (!SND.ctx) return;
+    this.stop();
+    const roots = [146.83, 130.81, 164.81, 138.59, 123.47]; // D, C, E, C#, B
+    this.keyRoot = roots[stageIdx % 5];
+    this.mode = stageIdx === 4 ? 'boss' : 'stage';
+    this.tempo = this.mode === 'boss' ? 146 : 96 + stageIdx * 6;
+    const progs = [[0, 5, 2, 6, 0, 5, 6, 0], [0, 3, 5, 4, 0, 3, 6, 4], [0, 5, 6, 0, 3, 5, 6, 4], [0, 6, 5, 4, 0, 6, 5, 6], [0, 0, 5, 6, 0, 0, 3, 4]];
+    this.prog = progs[stageIdx % 5];
+    this.theme = (seed + stageIdx) % 2 ? this.THEME_B : this.THEME_A;
+    this.layer = 0;
+    this._go();
   },
   stop() { this.on = false; if (this.timer) clearInterval(this.timer); this.timer = null; },
   crashStop() { // 늘어지며 멈춤
@@ -135,33 +154,91 @@ const MUS = {
     setTimeout(() => { this.stop(); SND.apply(); }, 2200);
   },
   note(deg, oct) {
-    const sc = this.minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
     const o = Math.floor(deg / 7), d = ((deg % 7) + 7) % 7;
-    return this.keyRoot * Math.pow(2, (sc[d] + 12 * (o + oct)) / 12) * this.pitchMul;
+    let semi = this.SCALE[d];
+    if (d === 6 && this.lead) semi = 11; // 이끎음
+    return this.keyRoot * Math.pow(2, (semi + 12 * (o + oct)) / 12) * this.pitchMul;
+  },
+  // 필터 거친 목소리 (현악·금관·합창 공용)
+  voice(f, t, dur, { type = 'sawtooth', vol = 0.05, cut = 1400, atk = 0.02, rel = 0.15, det = 0, q = 0.7 } = {}) {
+    const c = SND.ctx, o = c.createOscillator(), fl = c.createBiquadFilter(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (det) o.detune.setValueAtTime(det, t);
+    fl.type = 'lowpass'; fl.frequency.setValueAtTime(cut, t); fl.Q.value = q;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + atk);
+    g.gain.setValueAtTime(vol, t + Math.max(atk, dur - rel));
+    g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    o.connect(fl); fl.connect(g); g.connect(SND.musG);
+    o.start(t); o.stop(t + dur + 0.05);
+  },
+  timpani(t, vol = 0.6, f = 73) {
+    SND.tone(f * this.pitchMul, 0.9, 'sine', vol, f * 0.62, t, SND.musG, 0.003);
+    SND.noiseHit(0.25, vol * 0.35, 'lowpass', 380, t, SND.musG);
   },
   tick() {
     if (!this.on || !SND.ctx) return;
-    while (this.next < SND.ctx.currentTime + 0.12) {
+    while (this.next < SND.ctx.currentTime + 0.15) {
       this.playStep(this.step, this.next);
-      let dt = 60 / this.tempo / 4 * this.tempoMul * (this.slow ? 1.7 : 1);
+      const dt = 60 / this.tempo / 4 * this.tempoMul * (this.slow ? 1.7 : 1);
       if (this.crash) { this.tempoMul *= 1.09; this.pitchMul *= 0.965; }
       this.next += dt; this.step++;
     }
   },
   playStep(s, t) {
-    const st = s % 16, bar = Math.floor(s / 16) % 4, chord = this.prog[bar];
-    const D = SND.musG, sl = this.slow ? 0.84 : 1;
-    // 드럼 (항상)
-    if (st % 4 === 0 && (this.boss || st === 0 || st === 8 || (st === 12 && bar % 2))) SND.tone(140, 0.16, 'sine', 0.55, 40, t, D, 0.002);
-    if (st === 4 || st === 12) SND.noiseHit(0.12, 0.22, 'bandpass', 1800, t, D);
-    if (st % 2 === 1 || this.boss) SND.noiseHit(0.03, 0.08, 'highpass', 7000, t, D);
-    // 베이스
-    if (this.layer >= 1 && [0, 3, 6, 8, 11, 14].includes(st)) SND.tone(this.note(chord, -1) * sl, 0.16, 'triangle', 0.32, null, t, D);
-    // 화음
-    if (this.layer >= 2 && (st === 0 || st === 8)) for (const k of [0, 2, 4]) SND.tone(this.note(chord + k, 0) * sl, 0.5, 'square', 0.035, null, t, D, 0.02);
-    // 멜로디
-    if (this.layer >= 3) { const m = this.mel[(s % 32)]; if (m != null && st % 2 === 0) SND.tone(this.note(chord + m, 1) * sl, 0.18, 'square', 0.06, null, t, D); }
-    // 전체 합주 (아르페지오)
-    if (this.layer >= 4 && st % 2 === 1) SND.tone(this.note(chord + [0, 2, 4, 7][(st >> 1) % 4], 2) * sl, 0.1, 'triangle', 0.05, null, t, D);
+    const st = s % 16, bar = Math.floor(s / 16) % 8, chord = this.prog[bar];
+    const sp = 60 / this.tempo / 4 * this.tempoMul * (this.slow ? 1.7 : 1); // 16분음표 길이(초)
+    const barLen = sp * 16;
+    const D = SND.musG, title = this.mode === 'title', boss = this.mode === 'boss';
+    const L = this.layer;
+    const fin = bar === 7; // 8마디째: 필인
+
+    // ── 타악기 ──
+    if (title) {
+      if (st === 0) this.timpani(t, 0.7);
+      if (st === 8 && bar % 2) this.timpani(t, 0.45, 98);
+      if (fin && st >= 8 && st % 2 === 0) this.timpani(t, 0.25 + st * 0.02, 73); // 팀파니 롤
+      if (st === 0 && bar % 4 === 0) SND.noiseHit(1.6, 0.12, 'highpass', 5000, t, D); // 심벌 스웰
+    } else {
+      // 행진 북: 쿵 · 딱 · 롤
+      const kick = boss ? st % 4 === 0 : (st === 0 || st === 8 || st === 10);
+      if (kick) SND.tone(120 * this.pitchMul, 0.2, 'sine', 0.55, 38, t, D, 0.002);
+      if (st === 4 || st === 12) SND.noiseHit(0.14, 0.24, 'bandpass', 1700, t, D);
+      if (L >= 1 && (st === 14 || st === 15)) SND.noiseHit(0.06, 0.1, 'bandpass', 2000, t, D); // 스네어 장식
+      if (st % 2 === 1) SND.noiseHit(0.025, 0.05, 'highpass', 8000, t, D);
+      if (st === 0) this.timpani(t, boss ? 0.5 : 0.38);
+      if (fin && st >= 12) this.timpani(t, 0.3, [73, 82, 92, 110][st - 12]); // 탐 필인
+    }
+    // ── 베이스: 비장한 8분음표 오스티나토 ──
+    if (title ? st % 8 === 0 : L >= 1 && st % 2 === 0) {
+      const f = this.note(chord, -2);
+      this.voice(f, t, title ? barLen * 0.5 : sp * 1.8, { vol: title ? 0.11 : 0.1, cut: 420, atk: 0.01, rel: 0.06 });
+      if (!title && st % 4 === 0) this.voice(f * 2, t, sp * 1.6, { vol: 0.05, cut: 700, atk: 0.01, rel: 0.05 });
+    }
+    // ── 현악 패드 (한 마디 지속) ──
+    if ((title || L >= 2) && st === 0) {
+      for (const k of [0, 2, 4]) for (const dt of [-7, 7]) this.voice(this.note(chord + k, 0), t, barLen * 1.02, { vol: 0.022, cut: 1300, atk: title ? 0.45 : 0.12, rel: 0.3, det: dt });
+    }
+    // ── 금관 스타브 (스테이지: 화음 층에서 엇박 강세) ──
+    if (!title && L >= 2 && (st === 0 || st === 6 || st === 10)) {
+      for (const k of [0, 4]) this.voice(this.note(chord + k, 0), t, sp * 1.5, { type: 'square', vol: 0.03, cut: 1800, atk: 0.01, rel: 0.08 });
+    }
+    // ── 영웅 테마 (금관 멜로디) ──
+    const melOn = title ? s >= 64 : L >= 3;
+    if (melOn && this.theme) {
+      const pos = s % 128;
+      for (const [p, deg, len] of this.theme) if (p === pos) {
+        this.lead = true;
+        const f = this.note(deg, 1); this.lead = false;
+        const d = sp * len * 0.95;
+        this.voice(f, t, d, { vol: 0.07, cut: 2200, atk: 0.04, rel: 0.12 });
+        this.voice(f / 2, t, d, { type: 'square', vol: 0.03, cut: 1200, atk: 0.04, rel: 0.12 });
+      }
+    }
+    // ── 합창 (높은 사인 패드) ──
+    if ((title ? s >= 32 : L >= 4) && st === 0) {
+      for (const k of [0, 2, 4]) this.voice(this.note(chord + k, 2), t, barLen * 1.02, { type: 'sine', vol: 0.018, cut: 4000, atk: 0.6, rel: 0.4 });
+    }
+    // ── 전체 합주 (현악 아르페지오) ──
+    if (!title && L >= 4 && st % 2 === 1) this.voice(this.note(chord + [0, 2, 4, 7][(st >> 1) % 4], 1), t, sp * 0.9, { type: 'triangle', vol: 0.04, cut: 3000, atk: 0.005, rel: 0.05 });
   },
 };

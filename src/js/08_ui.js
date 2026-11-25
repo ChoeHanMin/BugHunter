@@ -100,6 +100,7 @@ const UI = {
     if (Game.hintT > 0 && Game.hintT < 9000) { Game.hintT -= dt; if (Game.hintT <= 0) $('#hint').classList.add('hidden'); }
     if (Game.toastT > 0) { Game.toastT -= dt; if (Game.toastT <= 0) $('#toast').classList.add('hidden'); }
     if (!Game.run || !Game.S || $('#hud').classList.contains('hidden')) return;
+    this.clTick(dt);
     const r = Game.run, S = Game.S, H = this._hud;
     const set = (k, v, fn) => { if (H[k] !== v) { H[k] = v; fn(v); } };
     set('stab', Math.round(r.stab), (v) => { $('#stabFill').style.width = v + '%'; $('#stabFill').classList.toggle('low', v <= 30); $('#stabTxt').textContent = v + '%'; });
@@ -121,6 +122,62 @@ const UI = {
     });
     const cd = Game.refT > 0 ? Math.round((Game.refT / 3) * 100) : 0;
     set('cd', cd, (v) => { $('.wpn[data-w="1"] .cd').style.width = v + '%'; });
+  },
+  // ----- 패치 로그 (왼쪽 코드 창) -----
+  clQ: [], clT: 0,
+  codeStart(def) {
+    $('#codeLogBody').innerHTML = ''; this.clQ = [];
+    this.clPush([['cmd', `$ build stage${def.id}.${def.key} --watch`], ['trace', `  ${def.boss ? 'mainLoop()' : 'world'} 로딩 중…`], ['ok', '  ready. 버그 감시 시작']]);
+  },
+  clPush(lines) {
+    this.clQ.push(...lines);
+    if (this.clQ.length > 18) this.clQ.splice(0, this.clQ.length - 18); // 너무 밀리면 오래된 줄 건너뛰기
+  },
+  codeFix(type, seg) {
+    const r = Math.random, P = (a) => a[Math.floor(r() * a.length)];
+    const v = P(['player', 'enemy', 'tree', 'texture', 'camera', 'score', 'sound', 'saveData', 'mesh', 'input', 'npc', 'shader']);
+    const m = P(['update', 'render', 'load', 'spawn', 'move', 'draw', 'sync', 'init', 'apply', 'reset']);
+    const n = Math.floor(r() * 900 + 100);
+    const T = {
+      basic: [[`- ${v}.${m}(${v}.data);`, `+ ${v}?.${m}(${v}.data ?? {});`], [`- if (${v} = null) return;`, `+ if (${v} === null) return;`], [`- ${m}(${v}, undefinde);`, `+ ${m}(${v}, undefined);`]],
+      clone: [[`- for (i = 0; i <= ${v}s.length; i++)`, `+ for (i = 0; i < ${v}s.length; i++)`], [`- copy(copy(${v}));`, `+ copy(${v});`]],
+      mini: [[`- ${v}s.push(${v});`, `+ if (!${v}s.has(${v})) ${v}s.add(${v});`], [`- dup(${v});`, `+ // 중복 호출 제거`]],
+      ghost: [[`- ${v}.alpha = undefined;`, `+ ${v}.alpha = 1.0;`], [`- ${v}.visible = Math.random() > .5;`, `+ ${v}.visible = true;`]],
+      e404: [[`- fetch("/${v}.json")`, `+ fetch("/assets/${v}.json")`], [`- load("${v}_final_v2.png")`, `+ load("${v}.png")`]],
+      loop: [[`- while (true) ${m}();`, `+ while (running) ${m}();`], [`- function ${m}() { ${m}(); }`, `+ function ${m}() { if (done) return; }`]],
+      hotfix: [[`+ stability += 20;`, `+ glitches.clear();`]],
+    };
+    let pair = seg ? [`- ${CODE[seg.i][1].trim()}`, `+ ${CODE[seg.i][0].trim()}`] : P(T[type] || T.basic);
+    const file = seg ? 'mainLoop' : type === 'hotfix' ? 'hotfix' : v;
+    const lines = type === 'hotfix'
+      ? [['cmd', '$ deploy hotfix --now'], ['add', '  ' + pair[0]], ['add', '  ' + pair[1]]]
+      : [['cmd', `@@ ${file}.js:${n} @@`], ['del', pair[0]], ['add', pair[1]], ['cmd', `$ run ${file}.js`]];
+    lines.push(['ok', `✔ Run Successfully (${Math.floor(r() * 40 + 3)}ms)`]);
+    this.clPush(lines);
+  },
+  codeError(type) {
+    const r = Math.random, P = (a) => a[Math.floor(r() * a.length)];
+    const v = P(['player', 'world', 'camera', 'ui', 'physics', 'audio', 'render']);
+    const msg = {
+      basic: `TypeError: ${v}.update is not a function`, clone: `RangeError: ${v} 복제가 너무 많음`, mini: `Warning: 중복된 ${v} 발견`,
+      ghost: `ReferenceError: ${v} is not defined`, e404: `404 Not Found: /${v}.json`, loop: `RangeError: Maximum call stack size exceeded`,
+    }[type] || `Error: ${v} 붕괴`;
+    const code = String(Math.floor(r() * 1e6)).padStart(6, '0');
+    this.clPush([['cmd', `$ run ${v}.js`], ['del', msg], ['trace', `    at ${v}.tick (${v}.js:${Math.floor(r() * 900 + 10)}:${Math.floor(r() * 80 + 1)})`], ['err', `✖ Run Error(0x${code})`]]);
+  },
+  clTick(dt) {
+    if (!this.clQ.length) return;
+    this.clT -= dt;
+    let n = this.clQ.length > 8 ? 3 : 1; // 밀리면 빨리 찍기
+    if (this.clT > 0) return;
+    this.clT = 0.035;
+    const body = $('#codeLogBody');
+    while (n-- > 0 && this.clQ.length) {
+      const [cls, txt] = this.clQ.shift();
+      const d = document.createElement('div'); d.className = cls; d.textContent = txt;
+      body.appendChild(d);
+      while (body.children.length > 14) body.removeChild(body.firstChild);
+    }
   },
   showClear() {
     const r = Game.run, i = Game.S.idx, res = r.stageRes[i];
@@ -161,7 +218,7 @@ const UI = {
   },
   showResult() {
     const r = Game.run;
-    MUS.layer = 4;
+    MUS.startTitle();
     $('#hud').classList.add('hidden'); this.hint('');
     const stabBonus = Math.round(r.stab) * 10;
     if (!r.finalized) { r.score += stabBonus; r.finalized = true; r.stabBonus = stabBonus; }

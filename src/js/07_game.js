@@ -84,6 +84,8 @@ const Game = {
       const w = +b.dataset.w;
       if (w === 2) this.rollback(); else this.selectWeapon(w);
     }));
+    // 타이틀 음악은 첫 터치·클릭 뒤에 시작 (브라우저 정책)
+    window.addEventListener('pointerdown', () => { SND.init(); if (this.state === 'title') MUS.startTitle(); }, true);
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'play') UI.pause(); });
     window.addEventListener('blur', () => { if (this.state === 'play') UI.pause(); });
   },
@@ -215,6 +217,7 @@ const Game = {
       PFX.fix(t.pos, [1, 0.3, 0.37], 1.6); SND.play('hit', this.run.streak);
       this.shake = Math.max(this.shake, 0.18); this.hitStop = 0.06;
       this.addScore(400, t.sx, t.sy); this.run.st.fixed.boss++; this.S.fixed++; this.streakUp();
+      UI.codeFix('boss', t);
       World.colorizeNear(t.pos, 3);
       return true;
     }
@@ -231,6 +234,7 @@ const Game = {
     this.run.st.fixed.clone++;
     if (!this.S.def.boss) this.S.fixed++; // 보스전 진행률은 오류 줄만
     this.pop(b.sx, b.sy - 20, '분열!', '#FFD34D');
+    UI.codeFix('clone');
     b.remove();
   },
   addScore(base, x, y) {
@@ -260,6 +264,7 @@ const Game = {
     if (r.stab - before < 5) this.addScore(500, b.sx, b.sy);
     this.pop(b.sx, b.sy - 46, r.stab > before ? `핫픽스! 안정성 +${Math.round(r.stab - before)}` : '핫픽스! 보너스', '#E6FF7A');
     if (fixedGl) UI.toast('핫픽스 적용 — 화면 고장 모두 복구');
+    UI.codeFix('hotfix');
     b.remove();
   },
   spawnHotfix() {
@@ -279,6 +284,7 @@ const Game = {
     this.streakUp();
     World.colorizeNear(b.pos, b.type === 'mini' ? 2 : 4);
     if (this.S.tutorial) { this.S.tutorial = false; UI.hint(''); }
+    UI.codeFix(b.type);
     b.remove();
   },
   contact(b) {
@@ -290,6 +296,7 @@ const Game = {
     FX.u.hit = 1; this.shake = 0.45;
     SND.play('glitch');
     this.addGlitch();
+    UI.codeError(b.type);
     if (!this.S.warned && this.run.stage === 0) { this.S.warned = true; UI.hint('버그에 닿으면 안정성이 깎이고 화면이 고장 나요!', 3); }
     if (this.run.stab <= 0) this.crash();
   },
@@ -398,6 +405,7 @@ const Game = {
     this.camera.lookAt(this.look);
     this.state = 'play';
     UI.showHUD();
+    UI.codeStart(def);
     UI.banner('STAGE ' + def.id, def.name, 2.2);
     MUS.start(idx, r.seed);
     if (def.unlock === 'refactor') { setTimeout(() => { SND.play('unlock'); UI.toast('리팩터 해금! ⋔ 부채꼴 7발 산탄'); }, 900); UI.hint(IS_TOUCH ? '아래 리팩터 버튼 → 7발 산탄 (충전 3초)' : '2번/휠: 리팩터 — 7발 산탄 (충전 3초)', 5); }
@@ -475,7 +483,7 @@ const Game = {
   // ----- 타이틀 배경 (회색 세상 + 기어 다니는 버그) -----
   toTitle() {
     this.state = 'title';
-    MUS.stop();
+    MUS.startTitle();
     this.clearEntities();
     RNG = mulberry32(3);
     World.build(STAGES[0], 4);

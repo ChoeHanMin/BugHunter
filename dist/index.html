@@ -147,6 +147,18 @@ padding:8px 14px;font-size:14px;pointer-events:none;white-space:nowrap;max-width
 .wpn{min-width:62px;padding:4px 6px}
 #hint{bottom:calc(150px + env(safe-area-inset-bottom))}
 }
+/* 패치 로그 (왼쪽 코드 창) */
+#codeLog{margin-top:8px;width:min(270px,44vw);background:rgba(8,10,8,.78);border:1px solid #2f342c;font-family:var(--mono);font-size:11px;line-height:1.45;pointer-events:none}
+.cl-h{display:flex;align-items:center;gap:4px;padding:3px 6px;background:#161a14;border-bottom:1px solid #2f342c;color:#7d8478;font-size:10px}
+.cl-h i{width:6px;height:6px;border-radius:50%;background:#3a3f37}.cl-h i:first-child{background:#FF4D5E}.cl-h span{margin-left:4px}
+.cl-b{padding:4px 6px;height:calc(9 * 1.45em);overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
+.cl-b div{flex-shrink:0;white-space:pre;overflow:hidden;text-overflow:ellipsis;color:#9aa096}
+.cl-b .del{color:#ff8a95}.cl-b .add{color:#9CFF7A}.cl-b .cmd{color:#7d8478}.cl-b .trace{color:#6b7266}
+.cl-b .ok{color:var(--lime);font-weight:800}.cl-b .err{color:#fff;background:#b3243a;font-weight:800;padding:0 3px;align-self:flex-start}
+.cl-b .ok,.cl-b .err{animation:clpop .25s steps(2)}
+@keyframes clpop{0%{opacity:0}50%{opacity:1;transform:translateX(3px)}}
+#hud.flipped #codeLog{margin-left:auto}
+@media (max-width:640px){#codeLog{margin-top:64px;font-size:9.5px}.cl-b{height:calc(7 * 1.45em)}}
 </style>
 </head>
 <body>
@@ -161,6 +173,7 @@ padding:8px 14px;font-size:14px;pointer-events:none;white-space:nowrap;max-width
       <div class="bar stab"><i id="stabFill"></i></div>
       <div class="num" id="stabTxt">100%</div>
       <div id="glitchList"></div>
+      <div id="codeLog"><div class="cl-h"><i></i><i></i><i></i><span>patch.log</span></div><div class="cl-b" id="codeLogBody"></div></div>
     </div>
     <div class="hud-c">
       <div class="lbl" id="stageLbl">STAGE 1</div>
@@ -601,7 +614,7 @@ const SND = {
     const t = this.ctx.currentTime;
     this.master.gain.setTargetAtTime(settings.sound ? 0.9 : 0, t, 0.02);
     this.sfxG.gain.setTargetAtTime(settings.sfx * 0.55, t, 0.02);
-    this.musG.gain.setTargetAtTime(settings.music * 0.42, t, 0.02);
+    this.musG.gain.setTargetAtTime(settings.music * 0.7, t, 0.02);
   },
   tone(f, dur, type = 'square', vol = 0.3, f2 = null, when = 0, dest = null, attack = 0.004) {
     if (!this.ctx) return;
@@ -684,25 +697,44 @@ const SND = {
   },
 };
 
-// 쌓이는 음악: 드럼 → 베이스 → 화음 → 멜로디 → 전체 합주
+// ---------- 음악: 단조 오케스트라풍 합성 ----------
+// 타이틀: 느리고 웅장한 테마 / 스테이지: 비장한 행진 (고칠수록 악기가 쌓임) / 보스: 빠르고 긴박
 const MUS = {
-  on: false, step: 0, next: 0, timer: null, tempo: 112, layer: 0, boss: false, crash: false,
-  tempoMul: 1, pitchMul: 1, slow: false, keyRoot: 220, minor: false, mel: [], prog: [0, 5, 3, 4],
-  start(stageIdx, seed) {
-    if (!SND.ctx) return;
-    this.stop();
-    const roots = [220, 196, 174.6, 233.1, 164.8];
-    this.keyRoot = roots[stageIdx % 5];
-    this.boss = stageIdx === 4; this.minor = stageIdx >= 2;
-    this.tempo = this.boss ? 152 : 108 + stageIdx * 6;
-    this.prog = this.boss ? [0, 0, 5, 6] : this.minor ? [0, 5, 3, 4] : [0, 3, 4, 3];
-    const r = mulberry32(seed + stageIdx * 31);
-    this.mel = []; for (let i = 0; i < 32; i++) this.mel.push(r() < 0.55 ? Math.floor(r() * 7) : null);
-    this.layer = 0; this.crash = false; this.tempoMul = 1; this.pitchMul = 1; this.slow = false;
+  on: false, step: 0, next: 0, timer: null, tempo: 100, layer: 0, mode: 'stage', crash: false,
+  tempoMul: 1, pitchMul: 1, slow: false, keyRoot: 146.83, prog: [0, 5, 2, 6], theme: null,
+  SCALE: [0, 2, 3, 5, 7, 8, 10], // 자연 단음계
+  // 영웅 테마: [시작 16분음표 위치, 음계 도수, 길이] — 8마디
+  THEME_A: [[0, 0, 6], [6, 4, 2], [8, 7, 8], [16, 5, 12], [28, 4, 4], [32, 2, 6], [38, 4, 2], [40, 2, 8], [48, 1, 8], [56, -1, 8],
+    [64, 0, 4], [68, 4, 4], [72, 7, 8], [80, 8, 8], [88, 7, 4], [92, 5, 4], [96, 7, 12], [108, 9, 4], [112, 8, 8], [120, 6, 8]],
+  THEME_B: [[0, 4, 4], [4, 4, 2], [6, 4, 2], [8, 7, 8], [16, 5, 4], [20, 4, 4], [24, 5, 8], [32, 4, 4], [36, 2, 4], [40, 4, 8], [48, 3, 8], [56, 1, 8],
+    [64, 4, 4], [68, 4, 2], [70, 4, 2], [72, 9, 8], [80, 8, 4], [84, 7, 4], [88, 8, 8], [96, 7, 6], [102, 6, 2], [104, 4, 8], [112, 6, 8], [120, 7, 8]],
+  _go() {
+    this.crash = false; this.tempoMul = 1; this.pitchMul = 1; this.slow = false;
     this.step = 0; this.next = SND.ctx.currentTime + 0.08; this.on = true;
     SND.musG.gain.cancelScheduledValues(SND.ctx.currentTime);
     SND.apply();
     this.timer = setInterval(() => this.tick(), 25);
+  },
+  startTitle() {
+    if (!SND.ctx) return;
+    if (this.on && this.mode === 'title') return;
+    this.stop();
+    this.mode = 'title'; this.keyRoot = 146.83; this.tempo = 74; this.prog = [0, 5, 2, 6, 0, 5, 3, 4];
+    this.theme = this.THEME_A; this.layer = 4;
+    this._go();
+  },
+  start(stageIdx, seed) {
+    if (!SND.ctx) return;
+    this.stop();
+    const roots = [146.83, 130.81, 164.81, 138.59, 123.47]; // D, C, E, C#, B
+    this.keyRoot = roots[stageIdx % 5];
+    this.mode = stageIdx === 4 ? 'boss' : 'stage';
+    this.tempo = this.mode === 'boss' ? 146 : 96 + stageIdx * 6;
+    const progs = [[0, 5, 2, 6, 0, 5, 6, 0], [0, 3, 5, 4, 0, 3, 6, 4], [0, 5, 6, 0, 3, 5, 6, 4], [0, 6, 5, 4, 0, 6, 5, 6], [0, 0, 5, 6, 0, 0, 3, 4]];
+    this.prog = progs[stageIdx % 5];
+    this.theme = (seed + stageIdx) % 2 ? this.THEME_B : this.THEME_A;
+    this.layer = 0;
+    this._go();
   },
   stop() { this.on = false; if (this.timer) clearInterval(this.timer); this.timer = null; },
   crashStop() { // 늘어지며 멈춤
@@ -713,34 +745,92 @@ const MUS = {
     setTimeout(() => { this.stop(); SND.apply(); }, 2200);
   },
   note(deg, oct) {
-    const sc = this.minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
     const o = Math.floor(deg / 7), d = ((deg % 7) + 7) % 7;
-    return this.keyRoot * Math.pow(2, (sc[d] + 12 * (o + oct)) / 12) * this.pitchMul;
+    let semi = this.SCALE[d];
+    if (d === 6 && this.lead) semi = 11; // 이끎음
+    return this.keyRoot * Math.pow(2, (semi + 12 * (o + oct)) / 12) * this.pitchMul;
+  },
+  // 필터 거친 목소리 (현악·금관·합창 공용)
+  voice(f, t, dur, { type = 'sawtooth', vol = 0.05, cut = 1400, atk = 0.02, rel = 0.15, det = 0, q = 0.7 } = {}) {
+    const c = SND.ctx, o = c.createOscillator(), fl = c.createBiquadFilter(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (det) o.detune.setValueAtTime(det, t);
+    fl.type = 'lowpass'; fl.frequency.setValueAtTime(cut, t); fl.Q.value = q;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + atk);
+    g.gain.setValueAtTime(vol, t + Math.max(atk, dur - rel));
+    g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    o.connect(fl); fl.connect(g); g.connect(SND.musG);
+    o.start(t); o.stop(t + dur + 0.05);
+  },
+  timpani(t, vol = 0.6, f = 73) {
+    SND.tone(f * this.pitchMul, 0.9, 'sine', vol, f * 0.62, t, SND.musG, 0.003);
+    SND.noiseHit(0.25, vol * 0.35, 'lowpass', 380, t, SND.musG);
   },
   tick() {
     if (!this.on || !SND.ctx) return;
-    while (this.next < SND.ctx.currentTime + 0.12) {
+    while (this.next < SND.ctx.currentTime + 0.15) {
       this.playStep(this.step, this.next);
-      let dt = 60 / this.tempo / 4 * this.tempoMul * (this.slow ? 1.7 : 1);
+      const dt = 60 / this.tempo / 4 * this.tempoMul * (this.slow ? 1.7 : 1);
       if (this.crash) { this.tempoMul *= 1.09; this.pitchMul *= 0.965; }
       this.next += dt; this.step++;
     }
   },
   playStep(s, t) {
-    const st = s % 16, bar = Math.floor(s / 16) % 4, chord = this.prog[bar];
-    const D = SND.musG, sl = this.slow ? 0.84 : 1;
-    // 드럼 (항상)
-    if (st % 4 === 0 && (this.boss || st === 0 || st === 8 || (st === 12 && bar % 2))) SND.tone(140, 0.16, 'sine', 0.55, 40, t, D, 0.002);
-    if (st === 4 || st === 12) SND.noiseHit(0.12, 0.22, 'bandpass', 1800, t, D);
-    if (st % 2 === 1 || this.boss) SND.noiseHit(0.03, 0.08, 'highpass', 7000, t, D);
-    // 베이스
-    if (this.layer >= 1 && [0, 3, 6, 8, 11, 14].includes(st)) SND.tone(this.note(chord, -1) * sl, 0.16, 'triangle', 0.32, null, t, D);
-    // 화음
-    if (this.layer >= 2 && (st === 0 || st === 8)) for (const k of [0, 2, 4]) SND.tone(this.note(chord + k, 0) * sl, 0.5, 'square', 0.035, null, t, D, 0.02);
-    // 멜로디
-    if (this.layer >= 3) { const m = this.mel[(s % 32)]; if (m != null && st % 2 === 0) SND.tone(this.note(chord + m, 1) * sl, 0.18, 'square', 0.06, null, t, D); }
-    // 전체 합주 (아르페지오)
-    if (this.layer >= 4 && st % 2 === 1) SND.tone(this.note(chord + [0, 2, 4, 7][(st >> 1) % 4], 2) * sl, 0.1, 'triangle', 0.05, null, t, D);
+    const st = s % 16, bar = Math.floor(s / 16) % 8, chord = this.prog[bar];
+    const sp = 60 / this.tempo / 4 * this.tempoMul * (this.slow ? 1.7 : 1); // 16분음표 길이(초)
+    const barLen = sp * 16;
+    const D = SND.musG, title = this.mode === 'title', boss = this.mode === 'boss';
+    const L = this.layer;
+    const fin = bar === 7; // 8마디째: 필인
+
+    // ── 타악기 ──
+    if (title) {
+      if (st === 0) this.timpani(t, 0.7);
+      if (st === 8 && bar % 2) this.timpani(t, 0.45, 98);
+      if (fin && st >= 8 && st % 2 === 0) this.timpani(t, 0.25 + st * 0.02, 73); // 팀파니 롤
+      if (st === 0 && bar % 4 === 0) SND.noiseHit(1.6, 0.12, 'highpass', 5000, t, D); // 심벌 스웰
+    } else {
+      // 행진 북: 쿵 · 딱 · 롤
+      const kick = boss ? st % 4 === 0 : (st === 0 || st === 8 || st === 10);
+      if (kick) SND.tone(120 * this.pitchMul, 0.2, 'sine', 0.55, 38, t, D, 0.002);
+      if (st === 4 || st === 12) SND.noiseHit(0.14, 0.24, 'bandpass', 1700, t, D);
+      if (L >= 1 && (st === 14 || st === 15)) SND.noiseHit(0.06, 0.1, 'bandpass', 2000, t, D); // 스네어 장식
+      if (st % 2 === 1) SND.noiseHit(0.025, 0.05, 'highpass', 8000, t, D);
+      if (st === 0) this.timpani(t, boss ? 0.5 : 0.38);
+      if (fin && st >= 12) this.timpani(t, 0.3, [73, 82, 92, 110][st - 12]); // 탐 필인
+    }
+    // ── 베이스: 비장한 8분음표 오스티나토 ──
+    if (title ? st % 8 === 0 : L >= 1 && st % 2 === 0) {
+      const f = this.note(chord, -2);
+      this.voice(f, t, title ? barLen * 0.5 : sp * 1.8, { vol: title ? 0.11 : 0.1, cut: 420, atk: 0.01, rel: 0.06 });
+      if (!title && st % 4 === 0) this.voice(f * 2, t, sp * 1.6, { vol: 0.05, cut: 700, atk: 0.01, rel: 0.05 });
+    }
+    // ── 현악 패드 (한 마디 지속) ──
+    if ((title || L >= 2) && st === 0) {
+      for (const k of [0, 2, 4]) for (const dt of [-7, 7]) this.voice(this.note(chord + k, 0), t, barLen * 1.02, { vol: 0.022, cut: 1300, atk: title ? 0.45 : 0.12, rel: 0.3, det: dt });
+    }
+    // ── 금관 스타브 (스테이지: 화음 층에서 엇박 강세) ──
+    if (!title && L >= 2 && (st === 0 || st === 6 || st === 10)) {
+      for (const k of [0, 4]) this.voice(this.note(chord + k, 0), t, sp * 1.5, { type: 'square', vol: 0.03, cut: 1800, atk: 0.01, rel: 0.08 });
+    }
+    // ── 영웅 테마 (금관 멜로디) ──
+    const melOn = title ? s >= 64 : L >= 3;
+    if (melOn && this.theme) {
+      const pos = s % 128;
+      for (const [p, deg, len] of this.theme) if (p === pos) {
+        this.lead = true;
+        const f = this.note(deg, 1); this.lead = false;
+        const d = sp * len * 0.95;
+        this.voice(f, t, d, { vol: 0.07, cut: 2200, atk: 0.04, rel: 0.12 });
+        this.voice(f / 2, t, d, { type: 'square', vol: 0.03, cut: 1200, atk: 0.04, rel: 0.12 });
+      }
+    }
+    // ── 합창 (높은 사인 패드) ──
+    if ((title ? s >= 32 : L >= 4) && st === 0) {
+      for (const k of [0, 2, 4]) this.voice(this.note(chord + k, 2), t, barLen * 1.02, { type: 'sine', vol: 0.018, cut: 4000, atk: 0.6, rel: 0.4 });
+    }
+    // ── 전체 합주 (현악 아르페지오) ──
+    if (!title && L >= 4 && st % 2 === 1) this.voice(this.note(chord + [0, 2, 4, 7][(st >> 1) % 4], 1), t, sp * 0.9, { type: 'triangle', vol: 0.04, cut: 3000, atk: 0.005, rel: 0.05 });
   },
 };
 
@@ -1453,6 +1543,8 @@ const Game = {
       const w = +b.dataset.w;
       if (w === 2) this.rollback(); else this.selectWeapon(w);
     }));
+    // 타이틀 음악은 첫 터치·클릭 뒤에 시작 (브라우저 정책)
+    window.addEventListener('pointerdown', () => { SND.init(); if (this.state === 'title') MUS.startTitle(); }, true);
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'play') UI.pause(); });
     window.addEventListener('blur', () => { if (this.state === 'play') UI.pause(); });
   },
@@ -1584,6 +1676,7 @@ const Game = {
       PFX.fix(t.pos, [1, 0.3, 0.37], 1.6); SND.play('hit', this.run.streak);
       this.shake = Math.max(this.shake, 0.18); this.hitStop = 0.06;
       this.addScore(400, t.sx, t.sy); this.run.st.fixed.boss++; this.S.fixed++; this.streakUp();
+      UI.codeFix('boss', t);
       World.colorizeNear(t.pos, 3);
       return true;
     }
@@ -1600,6 +1693,7 @@ const Game = {
     this.run.st.fixed.clone++;
     if (!this.S.def.boss) this.S.fixed++; // 보스전 진행률은 오류 줄만
     this.pop(b.sx, b.sy - 20, '분열!', '#FFD34D');
+    UI.codeFix('clone');
     b.remove();
   },
   addScore(base, x, y) {
@@ -1629,6 +1723,7 @@ const Game = {
     if (r.stab - before < 5) this.addScore(500, b.sx, b.sy);
     this.pop(b.sx, b.sy - 46, r.stab > before ? `핫픽스! 안정성 +${Math.round(r.stab - before)}` : '핫픽스! 보너스', '#E6FF7A');
     if (fixedGl) UI.toast('핫픽스 적용 — 화면 고장 모두 복구');
+    UI.codeFix('hotfix');
     b.remove();
   },
   spawnHotfix() {
@@ -1648,6 +1743,7 @@ const Game = {
     this.streakUp();
     World.colorizeNear(b.pos, b.type === 'mini' ? 2 : 4);
     if (this.S.tutorial) { this.S.tutorial = false; UI.hint(''); }
+    UI.codeFix(b.type);
     b.remove();
   },
   contact(b) {
@@ -1659,6 +1755,7 @@ const Game = {
     FX.u.hit = 1; this.shake = 0.45;
     SND.play('glitch');
     this.addGlitch();
+    UI.codeError(b.type);
     if (!this.S.warned && this.run.stage === 0) { this.S.warned = true; UI.hint('버그에 닿으면 안정성이 깎이고 화면이 고장 나요!', 3); }
     if (this.run.stab <= 0) this.crash();
   },
@@ -1767,6 +1864,7 @@ const Game = {
     this.camera.lookAt(this.look);
     this.state = 'play';
     UI.showHUD();
+    UI.codeStart(def);
     UI.banner('STAGE ' + def.id, def.name, 2.2);
     MUS.start(idx, r.seed);
     if (def.unlock === 'refactor') { setTimeout(() => { SND.play('unlock'); UI.toast('리팩터 해금! ⋔ 부채꼴 7발 산탄'); }, 900); UI.hint(IS_TOUCH ? '아래 리팩터 버튼 → 7발 산탄 (충전 3초)' : '2번/휠: 리팩터 — 7발 산탄 (충전 3초)', 5); }
@@ -1844,7 +1942,7 @@ const Game = {
   // ----- 타이틀 배경 (회색 세상 + 기어 다니는 버그) -----
   toTitle() {
     this.state = 'title';
-    MUS.stop();
+    MUS.startTitle();
     this.clearEntities();
     RNG = mulberry32(3);
     World.build(STAGES[0], 4);
@@ -2269,6 +2367,7 @@ const UI = {
     if (Game.hintT > 0 && Game.hintT < 9000) { Game.hintT -= dt; if (Game.hintT <= 0) $('#hint').classList.add('hidden'); }
     if (Game.toastT > 0) { Game.toastT -= dt; if (Game.toastT <= 0) $('#toast').classList.add('hidden'); }
     if (!Game.run || !Game.S || $('#hud').classList.contains('hidden')) return;
+    this.clTick(dt);
     const r = Game.run, S = Game.S, H = this._hud;
     const set = (k, v, fn) => { if (H[k] !== v) { H[k] = v; fn(v); } };
     set('stab', Math.round(r.stab), (v) => { $('#stabFill').style.width = v + '%'; $('#stabFill').classList.toggle('low', v <= 30); $('#stabTxt').textContent = v + '%'; });
@@ -2290,6 +2389,62 @@ const UI = {
     });
     const cd = Game.refT > 0 ? Math.round((Game.refT / 3) * 100) : 0;
     set('cd', cd, (v) => { $('.wpn[data-w="1"] .cd').style.width = v + '%'; });
+  },
+  // ----- 패치 로그 (왼쪽 코드 창) -----
+  clQ: [], clT: 0,
+  codeStart(def) {
+    $('#codeLogBody').innerHTML = ''; this.clQ = [];
+    this.clPush([['cmd', `$ build stage${def.id}.${def.key} --watch`], ['trace', `  ${def.boss ? 'mainLoop()' : 'world'} 로딩 중…`], ['ok', '  ready. 버그 감시 시작']]);
+  },
+  clPush(lines) {
+    this.clQ.push(...lines);
+    if (this.clQ.length > 18) this.clQ.splice(0, this.clQ.length - 18); // 너무 밀리면 오래된 줄 건너뛰기
+  },
+  codeFix(type, seg) {
+    const r = Math.random, P = (a) => a[Math.floor(r() * a.length)];
+    const v = P(['player', 'enemy', 'tree', 'texture', 'camera', 'score', 'sound', 'saveData', 'mesh', 'input', 'npc', 'shader']);
+    const m = P(['update', 'render', 'load', 'spawn', 'move', 'draw', 'sync', 'init', 'apply', 'reset']);
+    const n = Math.floor(r() * 900 + 100);
+    const T = {
+      basic: [[`- ${v}.${m}(${v}.data);`, `+ ${v}?.${m}(${v}.data ?? {});`], [`- if (${v} = null) return;`, `+ if (${v} === null) return;`], [`- ${m}(${v}, undefinde);`, `+ ${m}(${v}, undefined);`]],
+      clone: [[`- for (i = 0; i <= ${v}s.length; i++)`, `+ for (i = 0; i < ${v}s.length; i++)`], [`- copy(copy(${v}));`, `+ copy(${v});`]],
+      mini: [[`- ${v}s.push(${v});`, `+ if (!${v}s.has(${v})) ${v}s.add(${v});`], [`- dup(${v});`, `+ // 중복 호출 제거`]],
+      ghost: [[`- ${v}.alpha = undefined;`, `+ ${v}.alpha = 1.0;`], [`- ${v}.visible = Math.random() > .5;`, `+ ${v}.visible = true;`]],
+      e404: [[`- fetch("/${v}.json")`, `+ fetch("/assets/${v}.json")`], [`- load("${v}_final_v2.png")`, `+ load("${v}.png")`]],
+      loop: [[`- while (true) ${m}();`, `+ while (running) ${m}();`], [`- function ${m}() { ${m}(); }`, `+ function ${m}() { if (done) return; }`]],
+      hotfix: [[`+ stability += 20;`, `+ glitches.clear();`]],
+    };
+    let pair = seg ? [`- ${CODE[seg.i][1].trim()}`, `+ ${CODE[seg.i][0].trim()}`] : P(T[type] || T.basic);
+    const file = seg ? 'mainLoop' : type === 'hotfix' ? 'hotfix' : v;
+    const lines = type === 'hotfix'
+      ? [['cmd', '$ deploy hotfix --now'], ['add', '  ' + pair[0]], ['add', '  ' + pair[1]]]
+      : [['cmd', `@@ ${file}.js:${n} @@`], ['del', pair[0]], ['add', pair[1]], ['cmd', `$ run ${file}.js`]];
+    lines.push(['ok', `✔ Run Successfully (${Math.floor(r() * 40 + 3)}ms)`]);
+    this.clPush(lines);
+  },
+  codeError(type) {
+    const r = Math.random, P = (a) => a[Math.floor(r() * a.length)];
+    const v = P(['player', 'world', 'camera', 'ui', 'physics', 'audio', 'render']);
+    const msg = {
+      basic: `TypeError: ${v}.update is not a function`, clone: `RangeError: ${v} 복제가 너무 많음`, mini: `Warning: 중복된 ${v} 발견`,
+      ghost: `ReferenceError: ${v} is not defined`, e404: `404 Not Found: /${v}.json`, loop: `RangeError: Maximum call stack size exceeded`,
+    }[type] || `Error: ${v} 붕괴`;
+    const code = String(Math.floor(r() * 1e6)).padStart(6, '0');
+    this.clPush([['cmd', `$ run ${v}.js`], ['del', msg], ['trace', `    at ${v}.tick (${v}.js:${Math.floor(r() * 900 + 10)}:${Math.floor(r() * 80 + 1)})`], ['err', `✖ Run Error(0x${code})`]]);
+  },
+  clTick(dt) {
+    if (!this.clQ.length) return;
+    this.clT -= dt;
+    let n = this.clQ.length > 8 ? 3 : 1; // 밀리면 빨리 찍기
+    if (this.clT > 0) return;
+    this.clT = 0.035;
+    const body = $('#codeLogBody');
+    while (n-- > 0 && this.clQ.length) {
+      const [cls, txt] = this.clQ.shift();
+      const d = document.createElement('div'); d.className = cls; d.textContent = txt;
+      body.appendChild(d);
+      while (body.children.length > 14) body.removeChild(body.firstChild);
+    }
   },
   showClear() {
     const r = Game.run, i = Game.S.idx, res = r.stageRes[i];
@@ -2330,7 +2485,7 @@ const UI = {
   },
   showResult() {
     const r = Game.run;
-    MUS.layer = 4;
+    MUS.startTitle();
     $('#hud').classList.add('hidden'); this.hint('');
     const stabBonus = Math.round(r.stab) * 10;
     if (!r.finalized) { r.score += stabBonus; r.finalized = true; r.stabBonus = stabBonus; }
