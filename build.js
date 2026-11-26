@@ -18,8 +18,8 @@ const ASSET_SPEC = {
   char_dot: { width: 230, keep: true }, char_dot_flinch: { width: 230, keep: true }, char_dot_hurt: { width: 230, keep: true },
   char_rex: { width: 230, keep: true }, char_rex_flinch: { width: 230, keep: true }, char_rex_hurt: { width: 230, keep: true },
   char_pin: { width: 230, keep: true }, char_pin_flinch: { width: 230, keep: true }, char_pin_hurt: { width: 230, keep: true },
-  cover: { width: 800 }, cover_side: { width: 360 },
-  cover_side_forest: { width: 360 }, cover_side_city: { width: 360 }, cover_side_subway: { width: 360 }, cover_side_physics: { width: 360 }, cover_side_boss: { width: 360 }, cover_forest: { width: 800 }, cover_city: { width: 800 }, cover_subway: { width: 800 }, cover_physics: { width: 800 }, cover_boss: { width: 800 },
+  cover: { width: 800 }, cover_side: { height: 860 },
+  cover_side_forest: { height: 860 }, cover_side_city: { height: 860 }, cover_side_subway: { height: 860 }, cover_side_physics: { height: 860 }, cover_side_boss: { height: 860 }, cover_forest: { width: 800 }, cover_city: { width: 800 }, cover_subway: { width: 800 }, cover_physics: { width: 800 }, cover_boss: { width: 800 },
 };
 
 async function loadAssets() {
@@ -35,6 +35,7 @@ async function loadAssets() {
       let img = spec.keep ? sharp(buf) : sharp(buf).trim({ threshold: 1 }); // 투명 여백 잘라내기
       img = spec.size
         ? img.resize(spec.size, spec.size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        : spec.height ? img.resize({ height: spec.height, withoutEnlargement: true })
         : img.resize({ width: spec.width, withoutEnlargement: true });
       buf = await img.png({ palette: true, quality: 90, compressionLevel: 9 }).toBuffer();
       mime = 'image/png';
