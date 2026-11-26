@@ -48,7 +48,7 @@ async function loadAssets() {
     console.log(`  그림 ${name}: ${(buf.length / 1024).toFixed(1)} KB`);
   }
   // 효과음 파일 (그대로 넣음, 짧게!)
-  for (const name of ['sfx_shot', 'sfx_spread']) {
+  for (const name of ['sfx_shot', 'sfx_spread', 'sfx_snipe']) {
     for (const [ext, mime] of [['mp3', 'audio/mpeg'], ['ogg', 'audio/ogg'], ['wav', 'audio/wav']]) {
       const f = path.join(dir, `${name}.${ext}`);
       if (!fs.existsSync(f)) continue;

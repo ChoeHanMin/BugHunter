@@ -50,7 +50,7 @@ const SND = {
   // assets/sfx_*.mp3|ogg|wav 가 있으면 그 소리를 씀
   bufs: {},
   loadSamples() {
-    for (const k of ['sfx_shot', 'sfx_spread']) {
+    for (const k of ['sfx_shot', 'sfx_spread', 'sfx_snipe']) {
       const url = ASSETS[k]; if (!url || this.bufs[k]) continue;
       this.bufs[k] = 'loading';
       try {
@@ -104,8 +104,8 @@ const SND = {
       case 'overheat': this.noiseHit(1.2, 0.3, 'highpass', 3000); this.tone(900, 0.5, 'sawtooth', 0.12, 120); this.tone(1200, 0.08, 'square', 0.1, null, now + 0.02); break; // 치이익
       case 'cool': this.tone(1318, 0.1, 'triangle', 0.14); this.tone(1976, 0.18, 'triangle', 0.12, null, now + 0.08); break;
       case 'jam': this.tone(180, 0.04, 'square', 0.12, 90); this.noiseHit(0.03, 0.1, 'bandpass', 1200); break; // 딸깍(헛방)
-      case 'rifle': this.noiseHit(0.018, 0.14, 'highpass', 5000); this.tone(1500, 0.045, 'square', 0.06, 600); this.tone(160, 0.05, 'sine', 0.14, 60); break; // 연사 한 발
-      case 'snipe': this.noiseHit(0.05, 0.35, 'highpass', 3000); this.tone(2200, 0.25, 'sawtooth', 0.12, 300); this.tone(110, 0.3, 'sine', 0.45, 35); break; // 저격
+      case 'rifle': if (this.sample('sfx_shot', 0.8)) break; this.noiseHit(0.018, 0.14, 'highpass', 5000); this.tone(1500, 0.045, 'square', 0.06, 600); this.tone(160, 0.05, 'sine', 0.14, 60); break; // 연사 한 발
+      case 'snipe': if (this.sample('sfx_snipe', 1)) break; this.noiseHit(0.05, 0.35, 'highpass', 3000); this.tone(2200, 0.25, 'sawtooth', 0.12, 300); this.tone(110, 0.3, 'sine', 0.45, 35); break; // 저격
       case 'tick': this.tone(2600, 0.025, 'square', 0.035); break; // 맞힘
       case 'boom': this.noiseHit(0.4, 0.4, 'lowpass', 700); this.tone(90, 0.35, 'sine', 0.4, 30); break; // 미사일 격추
       case 'aim': this.tone(660, 0.09, 'sawtooth', 0.06, 880); break; // 적이 조준

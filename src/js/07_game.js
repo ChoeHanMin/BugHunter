@@ -873,6 +873,7 @@ const Game = {
       this.look.lerp(tgt, Math.min(1, dt * (moving ? 3 : 8)));
     }
     this.camera.lookAt(this.look);
+    if (S.phase === 'move') this.camera.rotation.z += Math.sin(S.moveT * 9) * 0.012 * (settings.reduceFlash ? 0.4 : 1); // 달릴 때 좌우로 살짝 기울어짐
     if (this.shake > 0.002) {
       const k = this.shake * (settings.reduceFlash ? 0.4 : 1);
       this.camera.position.x += (Math.random() - 0.5) * k; this.camera.position.y += (Math.random() - 0.5) * k;
@@ -1143,6 +1144,7 @@ const Game = {
     if (!inGame) { this.tracers = []; this.pops = []; return; }
     const mono = 'ui-monospace,Menlo,monospace';
     this.drawCoverImg(g);
+    if (this.S && this.S.phase === 'move') this.drawMoveEdges(g);
     // 적 공격 예고 (빨간 원 → 패킷이 날아옴)
     for (const a of this.attacks) {
       const k = clamp(a.t / a.dur, 0, 1), pulse = 0.5 + 0.5 * Math.sin(this.time * 24);
@@ -1308,6 +1310,21 @@ const Game = {
     }
     if (this.cover.broken) { g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(0, y, W, H - y); }
     g.restore();
+  },
+  // 이동 중: 화면 가장자리가 어둡게 일렁이고 속도선이 스침
+  drawMoveEdges(g) {
+    const W = this.W, H = this.H, k = settings.reduceFlash ? 0.4 : 1, t = this.S.moveT;
+    const jx = (Math.random() - 0.5) * 7 * k, jy = (Math.random() - 0.5) * 5 * k, p = 0.5 + 0.5 * Math.sin(t * 18);
+    const gr = g.createRadialGradient(W / 2 + jx, H * 0.45 + jy, Math.min(W, H) * (0.32 + p * 0.03), W / 2, H * 0.45, Math.max(W, H) * 0.78);
+    gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, `rgba(0,0,0,${(0.5 + p * 0.12) * k + 0.1})`);
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    g.strokeStyle = 'rgba(220,230,210,.22)'; g.lineWidth = 2;
+    const n = Math.round(10 * k);
+    for (let i = 0; i < n; i++) {
+      const left = i % 2 === 0, x = left ? Math.random() * W * 0.12 : W - Math.random() * W * 0.12;
+      const y = Math.random() * H, len = 40 + Math.random() * 60;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + (left ? -1 : 1) * len * 0.25, y + len); g.stroke();
+    }
   },
   drawCoverBar(g) {
     if (!this.S || this.S.phase === 'move' || this.state === 'clearing') return;
