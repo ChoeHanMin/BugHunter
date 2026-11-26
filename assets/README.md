@@ -24,7 +24,8 @@
 | `bug_throw.png` | throw 버그 | 96×96 | 투명 배경 |
 | `proj_missile.png` / `proj_packet.png` | 관통 미사일 / 에러 패킷 | 64×64 | 투명 배경 |
 | `cover.png` 또는 `cover_forest.png` 등 | (선택) 엄폐물 정면, 화면 아래를 가로로 채움 | 가로 800 | 투명 배경, 3:1 |
-| `char_dot.png` / `char_rex.png` / `char_pin.png` | 엄폐 중 3인칭 전신 (뒷모습, 웅크림) | 가로 360 | 투명 배경, 2:3, 발이 아래 끝 |
+| `char_dot.png` / `char_rex.png` / `char_pin.png` | 엄폐 중 3인칭 전신 (벽에 기댄 기본 자세) | 가로 230 | 투명 배경, 1:2, 발이 아래 끝, 여백 안 자름 |
+| `char_*_flinch.png` / `char_*_hurt.png` | 같은 캐릭터의 움찔 / 고통 자세 (기본과 같은 크기·위치) | 가로 230 | 위와 같음 |
 | `thumbnail.png` | saaskr 업로드용 썸네일 (게임에 안 들어감) | — | — |
 
 ChatGPT에 쓸 프롬프트는 `../PROMPTS.md`에 있어요.

@@ -114,6 +114,12 @@ function buildTextures() {
   // 분대 얼굴 (assets/portrait_*.png 있으면 교체)
   IMG.portrait = SQUAD_LOOK.map((s, i) => (ASSETS['portrait_' + s.key] ? imgOf(ASSETS['portrait_' + s.key]) : portraitCanvas(s)));
   IMG.char = SQUAD_LOOK.map((s, i) => (ASSETS['char_' + s.key] ? imgOf(ASSETS['char_' + s.key]) : charCanvas(s, i)));
+  // 자세: 기본 / 움찔(공격이 날아올 때) / 고통(맞았을 때). 없으면 기본 그림 사용
+  IMG.pose = SQUAD_LOOK.map((s, i) => ({
+    base: IMG.char[i],
+    flinch: ASSETS['char_' + s.key + '_flinch'] ? imgOf(ASSETS['char_' + s.key + '_flinch']) : IMG.char[i],
+    hurt: ASSETS['char_' + s.key + '_hurt'] ? imgOf(ASSETS['char_' + s.key + '_hurt']) : IMG.char[i],
+  }));
   // 무한루프 껍질 링
   {
     const c = document.createElement('canvas'); c.width = c.height = 40; const g = c.getContext('2d');

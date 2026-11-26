@@ -100,6 +100,14 @@ const Game = {
     g.renderOrder = 5;
     this.coverMesh = g; this.camera.add(g);
     g.visible = false;
+    // 3인칭 엄폐: 캐릭터가 등을 기대는 키 큰 벽 (화면 왼쪽)
+    const w = new THREE.Group();
+    const wb = new THREE.Mesh(GEO.box, this.coverMat); wb.scale.set(1.3, 5, 0.6);
+    const wl = new THREE.LineSegments(edgesOf(GEO.box), new THREE.LineBasicMaterial({ color: 0x10140c, fog: false })); wl.scale.copy(wb.scale);
+    const we = new THREE.Mesh(GEO.box, this.coverTopMat); we.scale.set(0.06, 5, 0.62); we.position.x = 0.65; // 모서리 빛
+    for (let k = -2; k <= 2; k++) { const sl = new THREE.Mesh(GEO.box, new THREE.MeshBasicMaterial({ color: 0x10140c, fog: false })); sl.scale.set(1.31, 0.03, 0.61); sl.position.y = k * 0.9; w.add(sl); }
+    w.add(wb, wl, we); w.position.set(-1.6, 0.2, -2.1); w.visible = false;
+    this.sideWall = w; this.camera.add(w);
   },
 
   // ----- 입력 -----
@@ -481,6 +489,7 @@ const Game = {
   },
   hurt(dmg, kind, type) {
     if (this.state !== 'play') return;
+    this.hurtT = 0.55; // 3인칭 캐릭터 고통 자세
     this.run.stab = Math.max(0, this.run.stab - Math.round(dmg * this.dmgK));
     this.run.streak = 0; this.run.st.contacts++;
     FX.u.hit = 1; this.shake = kind === 'packet' ? 0.3 : 0.45;
@@ -825,6 +834,7 @@ const Game = {
     let ws = this.state === 'crashing' ? 0.15 : this.ws;
     if (this.hitStop > 0) { this.hitStop -= dt; ws *= 0.12; }
     this.recoil = Math.max(0, this.recoil - dt * 8);
+    if (this.hurtT > 0) this.hurtT -= dt;
 
     // 엄폐 ↔ 사격 자세
     this.out = this.state === 'play' && this.ptr.down && S.started && S.phase === 'fight';
@@ -876,6 +886,13 @@ const Game = {
     cm.position.y = lerp(-0.74, -1.2, this.outK) + (this.cover.broken ? -0.25 : 0);
     cm.rotation.z = this.cover.broken ? 0.12 : 0;
     this.coverMat.color.set(S.def.cover); if (this.cover.broken) this.coverMat.color.multiplyScalar(0.45);
+    // 기댈 벽: 화면 왼쪽 26% 지점에 오른쪽 모서리가 오게, 3인칭일 때만
+    const tpk = this.tpK(), sw = this.sideWall;
+    sw.visible = tpk > 0.15 && this.state !== 'clearing' && S.phase !== 'move';
+    if (sw.visible) {
+      const hw = 2.1 * this.tanHalf * this.camera.aspect, right = (0.26 * 2 - 1) * hw;
+      sw.position.set(right - 0.65 - (1 - tpk) * 1.6, 0.2, -2.1);
+    }
 
     // 엔티티
     if (S.def.boss && S.started) Boss.update(dt, ws);
@@ -909,11 +926,14 @@ const Game = {
   // 엄폐 중 3인칭: 조작 중인 캐릭터 전신 (assets/char_*.png 또는 코드 그림)
   drawChar(g) {
     const a = clamp(1 - this.outK * 2.2, 0, 1); if (a <= 0.01 || !IMG.char) return;
-    const im = IMG.char[this.weapon] || IMG.char[0];
+    const P = (IMG.pose && IMG.pose[this.weapon]) || { base: IMG.char[this.weapon] || IMG.char[0] };
+    const incoming = this.attacks.some((q) => q.t > q.dur * 0.45) || this.bugs.some((b) => b.alive && b.role !== 'shoot' && b.hostile && b.dist < 6);
+    const im = this.hurtT > 0 ? (P.hurt || P.base) : incoming ? (P.flinch || P.base) : P.base;
     const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height; if (!iw) return;
     const W = this.W, H = this.H, S = this.S;
-    const h = W < H ? H * 0.44 : H * 0.66, w = h * iw / ih;
-    let cx = W * (W < H ? 0.32 : 0.3), y = H - h * 0.96;
+    const h = W < H ? H * 0.5 : H * 0.72, w = h * iw / ih;
+    let cx = W * (W < H ? 0.3 : 0.27), y = H - h * 0.97;
+    if (this.hurtT > 0) cx += Math.sin(this.hurtT * 40) * 5; // 맞으면 흔들림
     if (S.phase === 'move') { y -= Math.abs(Math.sin(S.moveT * 9)) * h * 0.05; cx += Math.sin(S.moveT * 4.5) * w * 0.04; }
     y += this.outK * h * 0.35; // 일어서며 화면 밖으로
     if (this.attacks.some((q) => q.t > q.dur * 0.6)) cx += (Math.random() - 0.5) * 4; // 움찔

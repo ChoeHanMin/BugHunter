@@ -14,7 +14,10 @@ const ASSET_SPEC = {
   logo: { width: 900 }, item_hotfix: { size: 96 }, gun: { width: 640 }, gun_refactor: { width: 640 }, gun_sniper: { width: 640 },
   bug_throw: { size: 96 }, proj_missile: { size: 64 }, proj_packet: { size: 64 },
   portrait_dot: { size: 128 }, portrait_rex: { size: 128 }, portrait_pin: { size: 128 },
-  char_dot: { width: 360 }, char_rex: { width: 360 }, char_pin: { width: 360 },
+  // 캐릭터 자세 그림: 여백을 자르지 않음 (기본·움찔·고통의 위치가 어긋나지 않게)
+  char_dot: { width: 230, keep: true }, char_dot_flinch: { width: 230, keep: true }, char_dot_hurt: { width: 230, keep: true },
+  char_rex: { width: 230, keep: true }, char_rex_flinch: { width: 230, keep: true }, char_rex_hurt: { width: 230, keep: true },
+  char_pin: { width: 230, keep: true }, char_pin_flinch: { width: 230, keep: true }, char_pin_hurt: { width: 230, keep: true },
   cover: { width: 800 }, cover_forest: { width: 800 }, cover_city: { width: 800 }, cover_subway: { width: 800 }, cover_physics: { width: 800 }, cover_boss: { width: 800 },
 };
 
@@ -28,7 +31,7 @@ async function loadAssets() {
     if (!f) continue;
     let buf = fs.readFileSync(f), mime = f.endsWith('.webp') ? 'image/webp' : 'image/png';
     if (sharp) {
-      let img = sharp(buf).trim({ threshold: 1 }); // 투명 여백 잘라내기
+      let img = spec.keep ? sharp(buf) : sharp(buf).trim({ threshold: 1 }); // 투명 여백 잘라내기
       img = spec.size
         ? img.resize(spec.size, spec.size, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
         : img.resize({ width: spec.width, withoutEnlargement: true });
