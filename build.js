@@ -14,6 +14,7 @@ const ASSET_SPEC = {
   logo: { width: 900 }, item_hotfix: { size: 96 }, gun: { width: 640 }, gun_refactor: { width: 640 }, gun_sniper: { width: 640 },
   bug_throw: { size: 96 }, proj_missile: { size: 64 }, proj_packet: { size: 64 },
   portrait_dot: { size: 128 }, portrait_rex: { size: 128 }, portrait_pin: { size: 128 },
+  char_dot: { width: 360 }, char_rex: { width: 360 }, char_pin: { width: 360 },
   cover: { width: 800 }, cover_forest: { width: 800 }, cover_city: { width: 800 }, cover_subway: { width: 800 }, cover_physics: { width: 800 }, cover_boss: { width: 800 },
 };
 

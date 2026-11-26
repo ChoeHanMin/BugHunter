@@ -849,14 +849,16 @@ const Game = {
     }
     // 카메라: 숨으면 낮게, 나오면 엄폐물 위로
     const eye = lerp(1.08, 1.78, this.outK);
+    const tp = this.tpK(); // 3인칭 정도 (숨으면 1)
     if (S.def.boss) {
-      this.camera.position.set(Math.sin(this.time * 0.15) * 0.6, eye + 0.4, 24);
+      this.camera.position.set(Math.sin(this.time * 0.15) * 0.6 + tp * 0.8, eye + 0.4 + tp * 0.5, 24 + tp * 2.6);
       this.look.set(0, 5, 0);
     } else {
-      const { P, T } = this.coverBasis();
+      const { P, T, N } = this.coverBasis();
       const moving = S.phase === 'move';
       const bob = moving ? Math.abs(Math.sin(S.moveT * 9)) * 0.12 : 0;
-      this.camera.position.set(P.x, (moving ? 1.55 : eye) + bob, P.z);
+      this.camera.position.set(P.x, (moving ? 1.55 : eye) + bob + tp * 0.55, P.z);
+      this.camera.position.addScaledVector(T, -2.3 * tp).addScaledVector(N, 0.75 * tp);
       const tgt = V1.copy(P).addScaledVector(T, 10); tgt.y = moving ? 1.6 : lerp(1.9, 2.3, this.outK);
       this.look.lerp(tgt, Math.min(1, dt * (moving ? 3 : 8)));
     }
@@ -902,6 +904,25 @@ const Game = {
       FX.u.wipeOn = 1; FX.u.wipe = clamp((this.clearT - 0.3) / 1.6, 0, 1);
       if (this.clearT > 2.4) { FX.u.wipeOn = 0; this.state = 'cleared'; S.idx >= 4 ? UI.showResult() : UI.showClear(); }
     }
+  },
+  tpK() { return this.S && this.S.phase === 'move' ? 1 : clamp(1 - this.outK, 0, 1); },
+  // 엄폐 중 3인칭: 조작 중인 캐릭터 전신 (assets/char_*.png 또는 코드 그림)
+  drawChar(g) {
+    const a = clamp(1 - this.outK * 2.2, 0, 1); if (a <= 0.01 || !IMG.char) return;
+    const im = IMG.char[this.weapon] || IMG.char[0];
+    const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height; if (!iw) return;
+    const W = this.W, H = this.H, S = this.S;
+    const h = W < H ? H * 0.44 : H * 0.66, w = h * iw / ih;
+    let cx = W * (W < H ? 0.32 : 0.3), y = H - h * 0.96;
+    if (S.phase === 'move') { y -= Math.abs(Math.sin(S.moveT * 9)) * h * 0.05; cx += Math.sin(S.moveT * 4.5) * w * 0.04; }
+    y += this.outK * h * 0.35; // 일어서며 화면 밖으로
+    if (this.attacks.some((q) => q.t > q.dur * 0.6)) cx += (Math.random() - 0.5) * 4; // 움찔
+    const br = 1 + Math.sin(this.time * 2.2) * 0.012; // 숨쉬기
+    if (this.hudFlipped) cx = W - cx;
+    g.save(); g.globalAlpha = a; g.imageSmoothingEnabled = im instanceof HTMLImageElement;
+    g.translate(cx, y + h); g.scale(this.hudFlipped ? -1 : 1, br); g.drawImage(im, -w / 2, -h, w, h);
+    if (FX.u.hit > 0.3) { g.globalAlpha = a * FX.u.hit * 0.5; g.globalCompositeOperation = 'source-atop'; g.fillStyle = '#FF4D5E'; g.fillRect(-w / 2, -h, w, h); }
+    g.restore();
   },
   // 지금 화면의 버그에 맞는 캐릭터 버튼을 깜빡여 알려 줌
   updateSuggest() {
@@ -1017,6 +1038,10 @@ const Game = {
   },
   drawGun(g) {
     this.loadGunAssets();
+    const ga = clamp((this.outK - 0.15) * 1.8, 0, 1); if (ga <= 0.01) return; // 숨어 있을 땐 3인칭 캐릭터가 대신 보임
+    g.save(); g.globalAlpha = ga; this._drawGun(g); g.restore();
+  },
+  _drawGun(g) {
     const m = this.member(), col = m ? m.d.color : '#C6F432';
     const fp = this.fpLayout();
     if (fp) {
@@ -1102,7 +1127,7 @@ const Game = {
       g.fillStyle = '#ffffff'; g.fillRect(t.x1 - 3, t.y1 - 3, 6, 6); g.globalAlpha = 1;
     }
     this.tracers = this.tracers.filter((t) => t.t < 0.1);
-    if (this.state === 'play' || this.state === 'clearing') { this.drawGun(g); this.drawHeat(g, dt); }
+    if (this.state === 'play' || this.state === 'clearing' || this.state === 'tutor') { this.drawChar(g); this.drawGun(g); this.drawHeat(g, dt); }
     // 404 게이지, 이름표, 체력
     for (const b of this.bugs) {
       if (!b.onScreen) continue;

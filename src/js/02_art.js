@@ -113,6 +113,7 @@ function buildTextures() {
   IMG.packet = ASSETS.proj_packet ? imgOf(ASSETS.proj_packet) : packetCanvas();
   // 분대 얼굴 (assets/portrait_*.png 있으면 교체)
   IMG.portrait = SQUAD_LOOK.map((s, i) => (ASSETS['portrait_' + s.key] ? imgOf(ASSETS['portrait_' + s.key]) : portraitCanvas(s)));
+  IMG.char = SQUAD_LOOK.map((s, i) => (ASSETS['char_' + s.key] ? imgOf(ASSETS['char_' + s.key]) : charCanvas(s, i)));
   // 무한루프 껍질 링
   {
     const c = document.createElement('canvas'); c.width = c.height = 40; const g = c.getContext('2d');
@@ -281,5 +282,27 @@ function portraitCanvas(s) {
   P(7, 7, 10, 11, s.skin); P(6, 5, 12, 4, s.hair); P(6, 4, 12, 2, s.cap); P(5, 6, 3, 2, s.cap); // 얼굴·머리·모자
   P(9, 11, 2, 2, '#10140c'); P(13, 11, 2, 2, '#10140c'); P(10, 15, 4, 1, '#7a3a2a'); // 눈·입
   P(4, 9, 2, 6, '#2a2f28'); P(18, 9, 2, 6, '#2a2f28'); P(4, 14, 4, 1, s.acc); // 헤드셋
+  return c;
+}
+
+// 엄폐 중인 캐릭터 뒷모습 (웅크림). 그림이 오기 전 대체용 32×48 픽셀
+function charCanvas(s, i) {
+  const c = document.createElement('canvas'); c.width = 32; c.height = 48; const g = c.getContext('2d');
+  const P = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+  const O = '#0a0c09';
+  // 외곽선 덩어리
+  P(9, 8, 14, 13, O); P(6, 19, 21, 18, O); P(5, 35, 23, 12, O);
+  // 다리 (웅크림)
+  P(7, 37, 8, 9, '#2a2f28'); P(17, 37, 9, 9, '#2a2f28'); P(6, 44, 10, 3, '#1a1d19'); P(17, 44, 10, 3, '#1a1d19');
+  // 몸통·배낭
+  P(7, 20, 19, 17, '#3a4037'); P(10, 22, 13, 11, '#4a5046'); P(10, 22, 13, 2, s.acc); P(15, 24, 3, 8, '#2a2f28');
+  // 팔
+  P(5, 23, 4, 10, '#3a4037'); P(24, 23, 4, 9, '#3a4037'); P(25, 31, 3, 3, '#1d2f6e');
+  // 머리 (뒤통수)·모자·헤드셋
+  P(10, 9, 12, 11, s.hair); P(10, 8, 12, 4, s.cap); P(9, 10, 2, 3, s.cap); P(9, 13, 2, 5, '#2a2f28'); P(21, 13, 2, 5, '#2a2f28');
+  P(12, 18, 8, 2, s.skin);
+  // 총 (오른쪽 위로 비스듬히)
+  const gc = ['#C6F432', '#FFD34D', '#6fe7ff'][i] || '#C6F432';
+  for (let k = 0; k < (i === 2 ? 14 : 10); k++) P(25 + Math.floor(k * 0.4), 30 - k, 2, 2, k > (i === 2 ? 11 : 7) ? gc : '#3a4037');
   return c;
 }
