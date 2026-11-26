@@ -1409,7 +1409,7 @@ class Bug {
     this.ox = opt.ox != null ? opt.ox : rnd(-1.4, 1.4); this.oy = opt.oy != null ? opt.oy : rnd(-0.6, 0.6);
     this.wf = rnd(1.2, 2.4); this.wa = rnd(0.6, 1.4); this.ph = rnd(0, 6.28);
     this.sep = opt.sep ? opt.sep.clone() : null;
-    this.fireT = this.def.fire ? rnd(0.5, 1.1) : 0; // 자리 잡자마자 곧 공격
+    this.fireT = this.def.fire ? rnd(0.25, 0.75) : 0; // 자리 잡자마자 곧 공격
     this.hover = 0; this.vis = true; this.vuln = true; this.flash = 0;
     this.sx = -999; this.sy = -999; this.sr = 0; this.onScreen = false;
     this.mat = new THREE.SpriteMaterial({ map: TEX[type][0], transparent: true, fog: false });
@@ -1734,10 +1734,10 @@ const Boss = {
 // 누르고 있으면 엄폐물 위로 나와 사격, 떼면 숨어서 재장전.
 // 스테이지마다 엄폐 지점 3곳 → 웨이브를 다 처리하면 다음 엄폐물로 이동.
 const STAGES = [
-  { id: 1, key: 'forest', name: '텍스처 없는 숲', theme: 0x6BD66B, sky: 0x173a26, count: 14, mix: { basic: 6, throw: 4 }, intro: ['basic', 'throw'], fog: [18, 95, 30, 150], light: [0.8, 1.1], cover: 0x8a6a3a },
-  { id: 2, key: 'city', name: '복붙 도시', theme: 0xFF9E3D, sky: 0x2a1838, count: 18, mix: { basic: 5, throw: 4, clone: 6 }, intro: ['clone'], join: 1, fog: [22, 110, 30, 160], light: [0.8, 1.1], cover: 0x8a8a92 },
-  { id: 3, key: 'subway', name: '렌더링 지하철', theme: 0x3DE0D0, sky: 0x0b2a30, count: 22, mix: { basic: 5, throw: 3, clone: 4, ghost: 6 }, intro: ['ghost'], join: 2, fog: [6, 34, 18, 95], light: [0.25, 1.05], cover: 0x2a6a7a },
-  { id: 4, key: 'physics', name: '물리 고장 구역', theme: 0xB07CFF, sky: 0x22163a, count: 24, mix: { basic: 4, throw: 3, clone: 4, ghost: 3, e404: 5, loop: 4 }, intro: ['e404', 'loop'], fog: [18, 100, 30, 150], light: [0.75, 1.1], cover: 0x6a4a9a },
+  { id: 1, key: 'forest', name: '텍스처 없는 숲', theme: 0x6BD66B, sky: 0x173a26, count: 18, mix: { basic: 5, throw: 6 }, intro: ['basic', 'throw'], fog: [18, 95, 30, 150], light: [0.8, 1.1], cover: 0x8a6a3a },
+  { id: 2, key: 'city', name: '복붙 도시', theme: 0xFF9E3D, sky: 0x2a1838, count: 22, mix: { basic: 5, throw: 4, clone: 6 }, intro: ['clone'], join: 1, fog: [22, 110, 30, 160], light: [0.8, 1.1], cover: 0x8a8a92 },
+  { id: 3, key: 'subway', name: '렌더링 지하철', theme: 0x3DE0D0, sky: 0x0b2a30, count: 26, mix: { basic: 5, throw: 3, clone: 4, ghost: 6 }, intro: ['ghost'], join: 2, fog: [6, 34, 18, 95], light: [0.25, 1.05], cover: 0x2a6a7a },
+  { id: 4, key: 'physics', name: '물리 고장 구역', theme: 0xB07CFF, sky: 0x22163a, count: 28, mix: { basic: 4, throw: 3, clone: 4, ghost: 3, e404: 5, loop: 4 }, intro: ['e404', 'loop'], fog: [18, 100, 30, 150], light: [0.75, 1.1], cover: 0x6a4a9a },
   { id: 5, key: 'boss', name: '보스 "메인 루프"', theme: 0xC6F432, sky: 0x0f2a12, boss: true, fog: [30, 120, 40, 170], light: [0.7, 1.1], cover: 0x3a4a3a },
 ];
 const COVER_U = [0.1, 0.45, 0.8]; // 엄폐 지점 (레일 위치)
@@ -1757,11 +1757,11 @@ const GLITCH = {
 const NORMAL_SEED = 20261125;
 // 난이도: 하 / 중 / 상
 const DIFF = {
-  easy: { key: 'easy', name: '하', label: '쉬움', spd: 0.72, dmg: 0.55, count: 0.8, maxOn: 6, glDur: 0.6, maxGl: 1, assist: 12, rb: 3, hotfix: 1, combo: 4,
+  easy: { key: 'easy', name: '하', label: '쉬움', spd: 0.82, dmg: 0.55, count: 0.9, maxOn: 7, glDur: 0.6, maxGl: 1, assist: 12, rb: 3, hotfix: 1, combo: 4,
     tele: 1.5, fireMul: 1.7, coverHp: 180, trickle: 0, scatter: false, dash: 0, heat: false, trojan: 0, bossHp: -1, bossSpd: 0.75, bossSpawn: 1.6, bossK: 2.2, helpAt: 1 },
-  normal: { key: 'normal', name: '중', label: '보통', spd: 0.92, dmg: 0.85, count: 0.95, maxOn: 7, glDur: 0.85, maxGl: 2, assist: 4, rb: 2, hotfix: 0, combo: 5,
-    tele: 1.2, fireMul: 1.25, coverHp: 130, trickle: 0, scatter: false, dash: 0, heat: false, trojan: 0, bossHp: 0, bossSpd: 0.9, bossSpawn: 1.25, bossK: 3.5, helpAt: 2 },
-  hard: { key: 'hard', name: '상', label: '어려움', spd: 1.15, dmg: 1.15, count: 1.25, maxOn: 10, glDur: 1.3, maxGl: 3, assist: -6, rb: 1, hotfix: -1, combo: 8,
+  normal: { key: 'normal', name: '중', label: '보통', spd: 1.02, dmg: 0.85, count: 1.15, maxOn: 9, glDur: 0.85, maxGl: 2, assist: 4, rb: 2, hotfix: 0, combo: 5,
+    tele: 1.15, fireMul: 1.08, coverHp: 130, trickle: 0, scatter: false, dash: 0, heat: false, trojan: 0, bossHp: 0, bossSpd: 0.9, bossSpawn: 1.25, bossK: 3.5, helpAt: 2 },
+  hard: { key: 'hard', name: '상', label: '어려움', spd: 1.25, dmg: 1.15, count: 1.35, maxOn: 11, glDur: 1.3, maxGl: 3, assist: -6, rb: 1, hotfix: -1, combo: 8,
     tele: 0.75, fireMul: 0.72, coverHp: 70, trickle: 4.0, scatter: true, dash: 0.28, heat: true, trojan: 0.4, bossHp: 1, bossSpd: 1.3, bossSpawn: 0.6, bossK: 4, helpAt: 2 },
 };
 // 약점 무기: 맞는 무기로 쏘면 피해 2배 (산탄은 돌격형을 밀어내고, 저격은 무한루프 껍질을 뚫음)
@@ -2001,8 +2001,8 @@ const Game = {
     if (any) { this.run.st.hits++; this.S.hits++; }
     if (full && any) this.pop(a.x, a.y - 40, '풀차지!', '#6fe7ff');
   },
-  allyFire(dt) { // 조작하지 않는 분대원 자동 사격
-    if (!this.canFight()) return;
+  allyFire(dt) { // 조작하지 않는 분대원 자동 사격 — 플레이어가 나와서 쏠 때만 같이 나와서 쏨
+    if (!this.canFight() || !this.out || this.outK < 0.6) return;
     const cand = this.bugs.filter((b) => b.alive && b.onScreen && b.hostile && (b.type !== 'ghost' || b.vis) && (b.type !== 'loop' || b.vuln));
     if (this.S.def.boss) for (const s of Boss.targets()) if (s.onScreen && s.snake.real) cand.push(s);
     this.squad.forEach((q, i) => {
@@ -2357,7 +2357,9 @@ const Game = {
       this.loadWave();
     } else this.S.expected = 16;
     const help = r.help[idx];
-    this.bugSpeedMul = (1 + idx * 0.03) * (help ? 0.8 : 1) * this.D.spd;
+    // 뒤 스테이지일수록 빠르게 (+8%/스테이지), 엄폐 지점을 지날수록 또 빠르게 (loadWave)
+    this.baseSpd = (1 + idx * 0.08) * (help ? 0.8 : 1) * this.D.spd;
+    this.bugSpeedMul = this.baseSpd;
     this.fm = this.D.fireMul * (help ? 1.35 : 1); // 적 공격 간격
     this.dmgK = this.D.dmg * (help ? 0.8 : 1);
     this.heat = 0; this.overT = 0; this.smoke = [];
@@ -2393,6 +2395,7 @@ const Game = {
   },
   loadWave() {
     const S = this.S, c = S.covers[S.ci];
+    this.bugSpeedMul = this.baseSpd * (1 + S.ci * 0.06 + S.wi * 0.02); // 지점·웨이브가 넘어갈수록 빨라짐
     S.waveQ = (c.waves[S.wi] || []).map((q) => Object.assign({}, q));
     S.waveT = 0; S.waveIdle = 0;
     if (S.ci === S.covers.length - 1 && S.wi === 0 && !S.rush && !S.def.boss) {

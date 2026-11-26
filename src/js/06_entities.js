@@ -25,7 +25,7 @@ class Bug {
     this.ox = opt.ox != null ? opt.ox : rnd(-1.4, 1.4); this.oy = opt.oy != null ? opt.oy : rnd(-0.6, 0.6);
     this.wf = rnd(1.2, 2.4); this.wa = rnd(0.6, 1.4); this.ph = rnd(0, 6.28);
     this.sep = opt.sep ? opt.sep.clone() : null;
-    this.fireT = this.def.fire ? rnd(0.5, 1.1) : 0; // 자리 잡자마자 곧 공격
+    this.fireT = this.def.fire ? rnd(0.25, 0.75) : 0; // 자리 잡자마자 곧 공격
     this.hover = 0; this.vis = true; this.vuln = true; this.flash = 0;
     this.sx = -999; this.sy = -999; this.sr = 0; this.onScreen = false;
     this.mat = new THREE.SpriteMaterial({ map: TEX[type][0], transparent: true, fog: false });
