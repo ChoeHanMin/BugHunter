@@ -18,7 +18,8 @@ const ASSET_SPEC = {
   char_dot: { width: 230, keep: true }, char_dot_flinch: { width: 230, keep: true }, char_dot_hurt: { width: 230, keep: true },
   char_rex: { width: 230, keep: true }, char_rex_flinch: { width: 230, keep: true }, char_rex_hurt: { width: 230, keep: true },
   char_pin: { width: 230, keep: true }, char_pin_flinch: { width: 230, keep: true }, char_pin_hurt: { width: 230, keep: true },
-  cover: { width: 800 }, cover_side: { width: 360 }, cover_forest: { width: 800 }, cover_city: { width: 800 }, cover_subway: { width: 800 }, cover_physics: { width: 800 }, cover_boss: { width: 800 },
+  cover: { width: 800 }, cover_side: { width: 360 },
+  cover_side_forest: { width: 360 }, cover_side_city: { width: 360 }, cover_side_subway: { width: 360 }, cover_side_physics: { width: 360 }, cover_side_boss: { width: 360 }, cover_forest: { width: 800 }, cover_city: { width: 800 }, cover_subway: { width: 800 }, cover_physics: { width: 800 }, cover_boss: { width: 800 },
 };
 
 async function loadAssets() {

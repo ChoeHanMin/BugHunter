@@ -888,7 +888,7 @@ const Game = {
     this.coverMat.color.set(S.def.cover); if (this.cover.broken) this.coverMat.color.multiplyScalar(0.45);
     // 기댈 벽: 화면 왼쪽 26% 지점에 오른쪽 모서리가 오게, 3인칭일 때만
     const tpk = this.tpK(), sw = this.sideWall;
-    sw.visible = tpk > 0.15 && this.state !== 'clearing' && S.phase !== 'move' && !ASSETS.cover_side; // 그림이 있으면 2D로 그림
+    sw.visible = tpk > 0.15 && this.state !== 'clearing' && S.phase !== 'move' && !this.sideUrl(); // 그림이 있으면 2D로 그림
     if (sw.visible) {
       const hw = 2.1 * this.tanHalf * this.camera.aspect, right = (0.26 * 2 - 1) * hw;
       sw.position.set(right - 0.65 - (1 - tpk) * 1.6, 0.2, -2.1);
@@ -922,6 +922,7 @@ const Game = {
       if (this.clearT > 2.4) { FX.u.wipeOn = 0; this.state = 'cleared'; S.idx >= 4 ? UI.showResult() : UI.showClear(); }
     }
   },
+  sideUrl() { return this.S && (ASSETS['cover_side_' + this.S.def.key] || ASSETS.cover_side); }, // 스테이지별 옆 벽 → 없으면 공용
   tpK() { return this.S && this.S.phase === 'move' ? 1 : clamp(1 - this.outK, 0, 1); },
   // 엄폐 중 3인칭: 조작 중인 캐릭터 전신 (assets/char_*.png 또는 코드 그림)
   drawChar(g) {
@@ -939,9 +940,10 @@ const Game = {
     if (this.attacks.some((q) => q.t > q.dur * 0.6)) cx += (Math.random() - 0.5) * 4; // 움찔
     const br = 1 + Math.sin(this.time * 2.2) * 0.012; // 숨쉬기
     // 기댈 벽 그림 (assets/cover_side.png): 오른쪽 모서리가 캐릭터 왼쪽 어깨쯤
-    if (ASSETS.cover_side && S.phase !== 'move') {
-      if (!this._sideImg) { this._sideImg = new Image(); this._sideImg.src = ASSETS.cover_side; }
-      const si = this._sideImg;
+    const sideUrl = this.sideUrl();
+    if (sideUrl && S.phase !== 'move') {
+      this._sideImgs = this._sideImgs || {};
+      let si = this._sideImgs[sideUrl]; if (!si) { si = this._sideImgs[sideUrl] = new Image(); si.src = sideUrl; }
       if (si.complete && si.naturalWidth) {
         const sh = H * 1.04, swd = sh * si.naturalWidth / si.naturalHeight;
         const right = cx - w * 0.16 - (1 - a) * swd * 0.6; // 나올 때 왼쪽으로 빠짐
