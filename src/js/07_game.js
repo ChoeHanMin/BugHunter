@@ -32,6 +32,7 @@ const DIFF = {
   hard: { key: 'hard', name: '상', label: '어려움', spd: 1.25, dmg: 1.15, count: 1.35, maxOn: 11, glDur: 1.3, maxGl: 3, assist: -6, rb: 1, hotfix: -1, combo: 8,
     tele: 0.75, fireMul: 0.72, coverHp: 70, trickle: 4.0, scatter: true, dash: 0.28, heat: true, trojan: 0.4, bossHp: 1, bossSpd: 1.3, bossSpawn: 0.6, bossK: 4, helpAt: 2 },
 };
+DIFF.tutorial = Object.assign({}, DIFF.easy, { key: 'tutorial', name: '튜토리얼', label: '튜토리얼', maxOn: 4, count: 1 });
 // 약점 무기: 맞는 무기로 쏘면 피해 2배 (산탄은 돌격형을 밀어내고, 저격은 무한루프 껍질을 뚫음)
 const WEAK = { basic: 'shotgun', clone: 'shotgun', mini: 'shotgun', throw: 'sniper', ghost: 'sniper', loop: 'sniper', e404: 'rifle', missile: 'rifle' };
 const KIND_INFO = {
@@ -164,8 +165,9 @@ const Game = {
   maxOn() { return this.D.maxOn; },
 
   // ----- 분대 -----
-  memberUnlocked(i) { const s = this.run ? this.run.stage : 0; return i === 0 || (i === 1 && s >= 1) || (i === 2 && s >= 2); },
-  unlocked(w) { return w === 2 ? (this.run ? this.run.stage >= 2 : false) : this.memberUnlocked(w); }, // 2 = 롤백
+  isTut() { return !!(this.run && this.run.diff === 'tutorial'); },
+  memberUnlocked(i) { if (this.isTut()) return true; const s = this.run ? this.run.stage : 0; return i === 0 || (i === 1 && s >= 1) || (i === 2 && s >= 2); },
+  unlocked(w) { if (this.isTut()) return true; return w === 2 ? (this.run ? this.run.stage >= 2 : false) : this.memberUnlocked(w); }, // 2 = 롤백
   get cur() { return this.weapon; },
   member() { return this.squad[this.weapon]; },
   selectMember(i) {
@@ -456,12 +458,14 @@ const Game = {
     // 에러 패킷: 화면 가운데쯤에 예고 원 → 시간이 다 되면 명중. 숨어 있으면 엄폐물이 대신 맞음
     const dur = 1.05 * this.D.tele;
     this.attacks.push({ x: this.W * rnd(0.3, 0.7), y: this.H * rnd(0.36, 0.62), t: 0, dur, src, dmg: (src.def ? src.def.dmg : 11) });
+    Tut.event('packet', this.attacks[this.attacks.length - 1]);
     SND.play('aim');
     UI.tutor('hide');
   },
   spawnMissile(pos) {
     const b = this.spawnBugAt('missile', pos, { ox: rnd(-1, 1) });
     SND.play('missile');
+    Tut.event('missile', b);
     if (!this.seen.missile) { this.seen.missile = true; b.label = '관통 미사일'; }
     return b;
   },
@@ -506,6 +510,7 @@ const Game = {
     this.addGlitch();
     UI.codeError(kind === 'packet' ? 'packet' : kind === 'missile' ? 'missile' : type);
     if (!this.S.warned && this.run.stage === 0) { this.S.warned = true; UI.hint('맞으면 안정성이 깎이고 화면이 고장 나요!', 3); }
+    if (this.isTut()) this.run.stab = Math.max(30, this.run.stab); // 훈련장: 크래시 없음
     if (this.run.stab <= 0) this.crash();
   },
   hasGlitch(t) { return this.glitches.some((g) => g.type === t); },
@@ -608,12 +613,12 @@ const Game = {
   },
   startStage(idx) {
     const r = this.run; r.stage = idx;
-    const def = STAGES[idx];
+    const def = this.isTut() ? TUT_STAGE : STAGES[idx];
     if (!r.snap || r.snapStage !== idx) { this.snapshot(); r.snapStage = idx; }
     RNG = mulberry32(r.seed + idx * 101 + r.st.crashes * 13);
     this.clearEntities();
     World.build(def, r.seed);
-    const covers = def.boss ? [{ u: 0, waves: [] }] : this.buildCovers(def, r.seed);
+    const covers = def.boss ? [{ u: 0, waves: [] }] : def.tutorial ? [{ u: 0.12, waves: [[]] }] : this.buildCovers(def, r.seed);
     this.S = {
       def, idx, u: covers[0].u, t: 0, covers, ci: 0, wi: 0, waveT: 0, waveQ: [], waveIdle: 0, phase: 'fight', moveT: 0,
       fixed: 0, shots: 0, hits: 0, expected: 1, started: false, introT: 2.2, ending: false, rb: this.D.rb, rush: false,
@@ -646,7 +651,7 @@ const Game = {
     this.state = 'play';
     UI.showHUD();
     UI.codeStart(def);
-    UI.banner('STAGE ' + def.id, def.name, 2.2);
+    UI.banner(def.tutorial ? 'TUTORIAL' : 'STAGE ' + def.id, def.name, 2.2);
     MUS.start(idx, r.seed);
     if (def.join) {
       const m = SQUAD[def.join];
@@ -714,7 +719,7 @@ const Game = {
       if (S.moveT >= 2.6) { S.phase = 'fight'; this.loadWave(); UI.toast(`엄폐 지점 ${S.ci + 1}/3`); }
       return;
     }
-    if (S.def.boss) return;
+    if (S.def.boss || S.def.tutorial) return;
     S.waveT += dt * ws;
     while (S.waveQ.length && S.waveQ[0].at <= S.waveT && this.hostiles() < this.maxOn()) { const q = S.waveQ.shift(); this.spawnEntry(q.type, q.intro); }
     // 상: 웨이브 중에도 계속 추가
@@ -779,6 +784,7 @@ const Game = {
 
   // ----- 타이틀 배경 (회색 세상 + 기어 다니는 버그) -----
   toTitle() {
+    if (Tut.active) Tut.stop();
     this.state = 'title';
     MUS.startTitle();
     this.clearEntities();
@@ -827,9 +833,10 @@ const Game = {
       this.fpsAcc += dt; this.fpsN++;
       if (this.fpsAcc > 2.5) { if (this.fpsAcc / this.fpsN > 1 / 40) FX.stepDown(); this.fpsAcc = 0; this.fpsN = 0; }
     }
-    if (this.state === 'tutor') { FX.render(this.scene, this.camera, this.time); this.draw2D(0); return; }
+    if (this.state === 'tutor') { FX.render(this.scene, this.camera, this.time); this.draw2D(0); Tut.tick(0); return; }
     if (this.state === 'title') { this.updateTitle(dt); World.update(dt, 0); }
     else if (this.state === 'play' || this.state === 'crashing' || this.state === 'clearing') this.update(dt);
+    if (Tut.active && this.state === 'play') Tut.tick(dt);
     if (this.state !== 'paused') {
       PFX.update(dt);
       this.updateFX(dt);
@@ -844,16 +851,17 @@ const Game = {
     const wsT = this.rollT > 0 ? 0.3 : 1;
     this.ws += (wsT - this.ws) * Math.min(1, dt * 8);
     let ws = this.state === 'crashing' ? 0.15 : this.ws;
+    if (Tut.active) ws *= Tut.slow; // 튜토리얼: 새 버그 소개 중 슬로우
     if (this.hitStop > 0) { this.hitStop -= dt; ws *= 0.12; }
     this.recoil = Math.max(0, this.recoil - dt * 8);
     if (this.hurtT > 0) this.hurtT -= dt;
 
     // 엄폐 ↔ 사격 자세
-    this.out = this.state === 'play' && this.ptr.down && S.started && S.phase === 'fight';
+    this.out = this.state === 'play' && this.ptr.down && S.started && S.phase === 'fight' && !Tut.block;
     this.outK += ((this.out ? 1 : 0) - this.outK) * Math.min(1, dt * 14);
 
     if (this.state === 'play') {
-      if (!S.started) { S.introT -= dt; if (S.introT <= 0) { S.started = true; this.stageTutor(); } }
+      if (!S.started) { S.introT -= dt; if (S.introT <= 0) { S.started = true; if (S.def.tutorial) Tut.start(); else this.stageTutor(); } }
       else {
         S.t += dt;
         this.updateWaves(dt, ws);

@@ -226,6 +226,22 @@ padding:8px 14px;font-size:14px;pointer-events:none;white-space:nowrap;max-width
 .wpn.rb .sub{font-size:9px;color:#8fd8e8;margin-top:1px}
 #hud .lbl,#hud .num{text-shadow:1px 1px 0 #000,-1px 0 0 #000,0 -1px 0 #000,0 0 4px #000}
 .sndhint{font-size:13px;color:var(--lime);border:1px dashed var(--lime);padding:4px 10px;animation:blink 1.2s infinite steps(2)}
+/* 튜토리얼 스포트라이트 */
+#spot{position:absolute;inset:0;z-index:25;pointer-events:none}
+#spot .spane{position:absolute;backdrop-filter:grayscale(1) brightness(.5);-webkit-backdrop-filter:grayscale(1) brightness(.5);background:rgba(0,0,0,.12)}
+#spot .shole{position:absolute;border:3px solid var(--lime);box-shadow:0 0 0 2px #000,0 0 18px rgba(198,244,50,.8);animation:shole 1s infinite steps(2)}
+@keyframes shole{50%{border-color:#fff}}
+#spotCatch{position:absolute;inset:0;pointer-events:auto}
+#spotCard{position:absolute;left:50%;transform:translateX(-50%);width:min(380px,calc(100% - 24px));background:#0f120d;border:2px solid var(--lime);box-shadow:5px 5px 0 #000;padding:12px 14px;display:flex;flex-direction:column;gap:5px;pointer-events:auto;bottom:20%}
+#spotCard.act{pointer-events:none;border-color:var(--yel)}
+#spotCard .ttag{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--yel)}
+#spotCard .tt{font-size:17px;font-weight:800;color:var(--lime)}
+#spotCard .tb{font-size:13.5px;line-height:1.55;color:#dfe6d8}
+#spotCard .tb .role{font-family:var(--mono);font-size:11px;color:#1a1d19;background:var(--yel);padding:0 5px;margin-right:4px}
+#spotCard .tgo{font-family:var(--mono);font-size:11px;color:#8a9084;text-align:right;animation:blink 1s infinite steps(2)}
+.diffs{grid-template-columns:repeat(4,1fr)}
+@media (max-width:640px){.diffs{grid-template-columns:1fr 1fr}}
+.dcard.tut b{color:var(--yel)}.dcard.tut{border-color:#5a5330}
 </style>
 </head>
 <body>
@@ -303,6 +319,7 @@ padding:8px 14px;font-size:14px;pointer-events:none;white-space:nowrap;max-width
       <div class="tag" id="diffMode">정식 빌드</div>
       <h2>난이도</h2>
       <div class="diffs">
+        <button class="dcard tut" data-d="tutorial"><b>?</b><span class="dn">튜토리얼</span><span class="dd">화면 구성, 조작, 분대·무기, 버그 7종을 하나씩 직접 해 보며 배워요. 크래시 없음.</span></button>
         <button class="dcard" data-d="easy"><b>하</b><span class="dn">쉬움</span><span class="dd">버그가 느리고 덜 아파요. 처음 해 보는 사람에게.</span></button>
         <button class="dcard" data-d="normal"><b>중</b><span class="dn">보통</span><span class="dd">기획서 그대로의 기본 난이도.</span></button>
         <button class="dcard hard" data-d="hard"><b>상</b><span class="dn">어려움</span><span class="dd">버그가 끝없이 몰려오고 갑자기 돌진해요. 복제 버그는 엉뚱한 곳으로 튀고, 패치 건이 과열돼요. 가짜 핫픽스도 섞여 있어요.</span></button>
@@ -415,6 +432,14 @@ padding:8px 14px;font-size:14px;pointer-events:none;white-space:nowrap;max-width
     <div class="ri">📱↻</div>
     <b>세로로 돌려 주세요</b>
     <p>폰에서는 세로 화면에 맞춰져 있어요.<br>가로 큰 화면은 PC에서 즐겨 주세요.</p>
+  </div>
+
+  <!-- 튜토리얼: 설명하는 부분만 컬러, 나머지는 흑백 -->
+  <div id="spot" class="hidden">
+    <div class="spane"></div><div class="spane"></div><div class="spane"></div><div class="spane"></div>
+    <div class="shole"></div>
+    <div id="spotCatch" class="hidden"></div>
+    <div id="spotCard" class="hidden"><div class="ttag">TUTORIAL</div><div class="tt"></div><div class="tb"></div><div class="tgo"></div></div>
   </div>
 
   <div id="toast" class="hidden"></div>
@@ -1764,6 +1789,7 @@ const DIFF = {
   hard: { key: 'hard', name: '상', label: '어려움', spd: 1.25, dmg: 1.15, count: 1.35, maxOn: 11, glDur: 1.3, maxGl: 3, assist: -6, rb: 1, hotfix: -1, combo: 8,
     tele: 0.75, fireMul: 0.72, coverHp: 70, trickle: 4.0, scatter: true, dash: 0.28, heat: true, trojan: 0.4, bossHp: 1, bossSpd: 1.3, bossSpawn: 0.6, bossK: 4, helpAt: 2 },
 };
+DIFF.tutorial = Object.assign({}, DIFF.easy, { key: 'tutorial', name: '튜토리얼', label: '튜토리얼', maxOn: 4, count: 1 });
 // 약점 무기: 맞는 무기로 쏘면 피해 2배 (산탄은 돌격형을 밀어내고, 저격은 무한루프 껍질을 뚫음)
 const WEAK = { basic: 'shotgun', clone: 'shotgun', mini: 'shotgun', throw: 'sniper', ghost: 'sniper', loop: 'sniper', e404: 'rifle', missile: 'rifle' };
 const KIND_INFO = {
@@ -1896,8 +1922,9 @@ const Game = {
   maxOn() { return this.D.maxOn; },
 
   // ----- 분대 -----
-  memberUnlocked(i) { const s = this.run ? this.run.stage : 0; return i === 0 || (i === 1 && s >= 1) || (i === 2 && s >= 2); },
-  unlocked(w) { return w === 2 ? (this.run ? this.run.stage >= 2 : false) : this.memberUnlocked(w); }, // 2 = 롤백
+  isTut() { return !!(this.run && this.run.diff === 'tutorial'); },
+  memberUnlocked(i) { if (this.isTut()) return true; const s = this.run ? this.run.stage : 0; return i === 0 || (i === 1 && s >= 1) || (i === 2 && s >= 2); },
+  unlocked(w) { if (this.isTut()) return true; return w === 2 ? (this.run ? this.run.stage >= 2 : false) : this.memberUnlocked(w); }, // 2 = 롤백
   get cur() { return this.weapon; },
   member() { return this.squad[this.weapon]; },
   selectMember(i) {
@@ -2188,12 +2215,14 @@ const Game = {
     // 에러 패킷: 화면 가운데쯤에 예고 원 → 시간이 다 되면 명중. 숨어 있으면 엄폐물이 대신 맞음
     const dur = 1.05 * this.D.tele;
     this.attacks.push({ x: this.W * rnd(0.3, 0.7), y: this.H * rnd(0.36, 0.62), t: 0, dur, src, dmg: (src.def ? src.def.dmg : 11) });
+    Tut.event('packet', this.attacks[this.attacks.length - 1]);
     SND.play('aim');
     UI.tutor('hide');
   },
   spawnMissile(pos) {
     const b = this.spawnBugAt('missile', pos, { ox: rnd(-1, 1) });
     SND.play('missile');
+    Tut.event('missile', b);
     if (!this.seen.missile) { this.seen.missile = true; b.label = '관통 미사일'; }
     return b;
   },
@@ -2238,6 +2267,7 @@ const Game = {
     this.addGlitch();
     UI.codeError(kind === 'packet' ? 'packet' : kind === 'missile' ? 'missile' : type);
     if (!this.S.warned && this.run.stage === 0) { this.S.warned = true; UI.hint('맞으면 안정성이 깎이고 화면이 고장 나요!', 3); }
+    if (this.isTut()) this.run.stab = Math.max(30, this.run.stab); // 훈련장: 크래시 없음
     if (this.run.stab <= 0) this.crash();
   },
   hasGlitch(t) { return this.glitches.some((g) => g.type === t); },
@@ -2340,12 +2370,12 @@ const Game = {
   },
   startStage(idx) {
     const r = this.run; r.stage = idx;
-    const def = STAGES[idx];
+    const def = this.isTut() ? TUT_STAGE : STAGES[idx];
     if (!r.snap || r.snapStage !== idx) { this.snapshot(); r.snapStage = idx; }
     RNG = mulberry32(r.seed + idx * 101 + r.st.crashes * 13);
     this.clearEntities();
     World.build(def, r.seed);
-    const covers = def.boss ? [{ u: 0, waves: [] }] : this.buildCovers(def, r.seed);
+    const covers = def.boss ? [{ u: 0, waves: [] }] : def.tutorial ? [{ u: 0.12, waves: [[]] }] : this.buildCovers(def, r.seed);
     this.S = {
       def, idx, u: covers[0].u, t: 0, covers, ci: 0, wi: 0, waveT: 0, waveQ: [], waveIdle: 0, phase: 'fight', moveT: 0,
       fixed: 0, shots: 0, hits: 0, expected: 1, started: false, introT: 2.2, ending: false, rb: this.D.rb, rush: false,
@@ -2378,7 +2408,7 @@ const Game = {
     this.state = 'play';
     UI.showHUD();
     UI.codeStart(def);
-    UI.banner('STAGE ' + def.id, def.name, 2.2);
+    UI.banner(def.tutorial ? 'TUTORIAL' : 'STAGE ' + def.id, def.name, 2.2);
     MUS.start(idx, r.seed);
     if (def.join) {
       const m = SQUAD[def.join];
@@ -2446,7 +2476,7 @@ const Game = {
       if (S.moveT >= 2.6) { S.phase = 'fight'; this.loadWave(); UI.toast(`엄폐 지점 ${S.ci + 1}/3`); }
       return;
     }
-    if (S.def.boss) return;
+    if (S.def.boss || S.def.tutorial) return;
     S.waveT += dt * ws;
     while (S.waveQ.length && S.waveQ[0].at <= S.waveT && this.hostiles() < this.maxOn()) { const q = S.waveQ.shift(); this.spawnEntry(q.type, q.intro); }
     // 상: 웨이브 중에도 계속 추가
@@ -2511,6 +2541,7 @@ const Game = {
 
   // ----- 타이틀 배경 (회색 세상 + 기어 다니는 버그) -----
   toTitle() {
+    if (Tut.active) Tut.stop();
     this.state = 'title';
     MUS.startTitle();
     this.clearEntities();
@@ -2559,9 +2590,10 @@ const Game = {
       this.fpsAcc += dt; this.fpsN++;
       if (this.fpsAcc > 2.5) { if (this.fpsAcc / this.fpsN > 1 / 40) FX.stepDown(); this.fpsAcc = 0; this.fpsN = 0; }
     }
-    if (this.state === 'tutor') { FX.render(this.scene, this.camera, this.time); this.draw2D(0); return; }
+    if (this.state === 'tutor') { FX.render(this.scene, this.camera, this.time); this.draw2D(0); Tut.tick(0); return; }
     if (this.state === 'title') { this.updateTitle(dt); World.update(dt, 0); }
     else if (this.state === 'play' || this.state === 'crashing' || this.state === 'clearing') this.update(dt);
+    if (Tut.active && this.state === 'play') Tut.tick(dt);
     if (this.state !== 'paused') {
       PFX.update(dt);
       this.updateFX(dt);
@@ -2576,16 +2608,17 @@ const Game = {
     const wsT = this.rollT > 0 ? 0.3 : 1;
     this.ws += (wsT - this.ws) * Math.min(1, dt * 8);
     let ws = this.state === 'crashing' ? 0.15 : this.ws;
+    if (Tut.active) ws *= Tut.slow; // 튜토리얼: 새 버그 소개 중 슬로우
     if (this.hitStop > 0) { this.hitStop -= dt; ws *= 0.12; }
     this.recoil = Math.max(0, this.recoil - dt * 8);
     if (this.hurtT > 0) this.hurtT -= dt;
 
     // 엄폐 ↔ 사격 자세
-    this.out = this.state === 'play' && this.ptr.down && S.started && S.phase === 'fight';
+    this.out = this.state === 'play' && this.ptr.down && S.started && S.phase === 'fight' && !Tut.block;
     this.outK += ((this.out ? 1 : 0) - this.outK) * Math.min(1, dt * 14);
 
     if (this.state === 'play') {
-      if (!S.started) { S.introT -= dt; if (S.introT <= 0) { S.started = true; this.stageTutor(); } }
+      if (!S.started) { S.introT -= dt; if (S.introT <= 0) { S.started = true; if (S.def.tutorial) Tut.start(); else this.stageTutor(); } }
       else {
         S.t += dt;
         this.updateWaves(dt, ws);
@@ -3147,7 +3180,14 @@ const UI = {
     click('#btnDexBack', () => this.only(this.dexReturn || '#scrTitle'));
     click('#btnTutReset', () => { Store.set('tut', []); this.tutSeen = []; this.toast('안내 카드를 처음부터 다시 보여 줄게요'); });
     $('#tutor').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.tutorClose(); });
-    window.addEventListener('keydown', (e) => { if (Game.state === 'tutor' && (e.code === 'Space' || e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); this.tutorClose(); } }, true);
+    window.addEventListener('keydown', (e) => {
+      if (!(e.code === 'Space' || e.key === 'Enter')) { if (!(Game.state === 'tutor' && e.key === 'Escape')) return; }
+      if (Tut.active && !$('#spotCatch').classList.contains('hidden')) { e.preventDefault(); e.stopPropagation(); Tut.tap(); return; }
+      if (Game.state === 'tutor' && !Tut.active) { e.preventDefault(); this.tutorClose(); }
+    }, true);
+    const tutTap = (e) => { e.preventDefault(); e.stopPropagation(); Tut.tap(); };
+    $('#spotCatch').addEventListener('pointerdown', tutTap);
+    $('#spotCard').addEventListener('pointerdown', tutTap);
     window.addEventListener('resize', () => this.checkRotate());
     window.addEventListener('orientationchange', () => setTimeout(() => this.checkRotate(), 200));
     this.checkRotate();
@@ -3157,6 +3197,7 @@ const UI = {
     click('#btnDiffBack', () => this.only('#scrTitle'));
     $$('.dcard').forEach((b) => b.addEventListener('click', () => {
       SND.init();
+      if (b.dataset.d === 'tutorial') { SND.play('click'); this.only(); Game.newRun(false, 'tutorial'); return; }
       if (b.dataset.d === 'hard' && !this.hardOpen()) { SND.play('jam'); this.toast('난이도 중을 한 번 깨면 열려요'); return; }
       SND.play('click'); Store.set('diff', b.dataset.d); this.only(); Game.newRun(this.pendingDaily, b.dataset.d);
     }));
@@ -3192,7 +3233,7 @@ const UI = {
     $$('.mem').forEach((b, i) => { const c = b.querySelector('.pt'), im = IMG.portrait && IMG.portrait[i]; if (!im) return;
       const draw = () => { const g = c.getContext('2d'); const big = im instanceof HTMLImageElement; g.imageSmoothingEnabled = big; g.imageSmoothingQuality = 'high'; g.clearRect(0, 0, 64, 64); g.drawImage(im, 0, 0, 64, 64); };
       if (im instanceof HTMLImageElement && !im.complete) im.onload = draw; else draw(); });
-    $('#stageLbl').innerHTML = 'STAGE ' + Game.S.def.id + ' · ' + Game.S.def.name + `<span class="diffchip" style="color:${Game.D.key === 'hard' ? '#FF4D5E' : '#aab2a3'}">${Game.D.name}</span>`;
+    $('#stageLbl').innerHTML = (Game.S.def.tutorial ? 'TUTORIAL' : 'STAGE ' + Game.S.def.id) + ' · ' + Game.S.def.name + `<span class="diffchip" style="color:${Game.D.key === 'hard' ? '#FF4D5E' : '#aab2a3'}">${Game.D.name}</span>`;
     $('#helpBadge').classList.toggle('hidden', !Game.run.help[Game.run.stage]);
     this._hud = {};
   },
@@ -3256,6 +3297,7 @@ const UI = {
   // ----- 안내 카드: 처음 한 번, 전투를 멈추고 설명 -----
   tutSeen: null, tutQ: [],
   tutor(key, target) {
+    if (Game.isTut()) return; // 튜토리얼 모드는 자체 안내 사용
     if (!this.tutSeen) this.tutSeen = Store.get('tut', []);
     if (this.tutSeen.includes(key) || this.tutQ.some((q) => q.key === key)) return;
     let card;
@@ -3582,6 +3624,173 @@ window.addEventListener('load', () => {
     document.body.innerHTML = '<div style="padding:24px;color:#eee;font-family:sans-serif">이 기기에서 3D(WebGL)를 시작할 수 없어요.<br>다른 브라우저로 열어 주세요.<br><small style="color:#888">' + String(e && e.message || e) + '</small></div>';
   }
 });
+
+// ==== 09_tutorial.js ====
+// ---------- 튜토리얼: 화면 설명 → 조작 → 분대·무기 → 버그 하나씩 ----------
+// 설명하는 부분만 컬러, 나머지는 흑백. 새 버그가 나오면 슬로우 + 그 버그를 비춤.
+const TUT_STAGE = { id: 0, key: 'forest', name: '튜토리얼 훈련장', theme: 0x6BD66B, sky: 0x173a26, count: 0, mix: { basic: 1 }, intro: [], fog: [18, 95, 30, 150], light: [0.8, 1.1], cover: 0x8a6a3a, tutorial: true };
+
+const Tut = {
+  active: false, i: 0, steps: [], cur: null, t: 0, slow: 1, block: false, shown: {}, holdT: 0, wasOut: false, hideT: 0, ret0: null,
+  start() {
+    this.active = true; this.i = -1; this.shown = {}; this.slow = 1; this.block = false;
+    this.steps = this.build();
+    $('#spot').classList.remove('hidden');
+    this.next();
+  },
+  stop() {
+    this.active = false; this.cur = null; this.block = false; this.slow = 1;
+    $('#spot').classList.add('hidden');
+    if (Game.state === 'tutor') Game.state = 'play';
+  },
+  // ----- 화면 위치 -----
+  el(sel, pad = 6) { const e = $(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 }; },
+  coverBar() { const W = Game.W, H = Game.H, w = Math.min(220, W * 0.5); return { x: (W - w) / 2 - 8, y: H - (W < H ? 150 : 96) - 20, w: w + 16, h: 34 }; },
+  around(x, y, r) { return { x: x - r, y: y - r, w: r * 2, h: r * 2 }; },
+  bugRect(b) { return b && b.alive && b.onScreen ? this.around(b.sx, b.sy, Math.max(40, b.sr * 1.5)) : null; },
+  // ----- 단계 -----
+  build() {
+    const T = IS_TOUCH, S = [];
+    const tap = (title, body, spot, opt = {}) => S.push(Object.assign({ kind: 'tap', title, body, spot }, opt));
+    const act = (title, body, spot, done, opt = {}) => S.push(Object.assign({ kind: 'act', title, body, spot, done }, opt));
+    const bug = (type) => S.push({ kind: 'bug', type });
+    tap('튜토리얼 훈련장', '여기서는 크래시가 나지 않아요.<br>화면 구성 → 조작 → 분대와 무기 → 버그 순서로 하나씩 알려 줄게요.', null);
+    // 화면 구성
+    tap('안정성', '버그에게 맞으면 줄어들어요. <b>0%가 되면 크래시</b>, 그 스테이지를 처음부터 다시 해요.<br>아래 빨간 칸은 지금 걸린 화면 고장이에요.', () => this.el('.hud-l .bar', 8));
+    tap('진행률', '이 스테이지에서 고친 버그의 비율이에요. 고칠수록 회색 세상에 <b>색과 음악</b>이 돌아와요.', () => this.el('.hud-c'));
+    tap('점수와 연속 배율', '안 맞고 연속으로 고치면 배율이 올라가요 (최대 <b>×2.0</b>). 맞으면 다시 ×1.0.', () => this.el('.hud-r'));
+    tap('패치 로그', '버그를 고치면 고친 코드와 <b>Run Successfully</b>, 맞으면 <b>Run Error</b>가 찍혀요.', () => this.el('#codeLog'));
+    tap('엄폐물 체력', '숨어 있을 때 공격을 <b>대신 맞아 주는</b> 엄폐물이에요. 0이 되면 부서져서 숨어도 맞아요.<br>다음 엄폐 지점에 가면 새로 생겨요.', () => this.coverBar());
+    tap('일시정지', '일시정지 메뉴에서 <b>도감</b>(버그 설명 다시 보기)과 설정을 열 수 있어요.', () => this.el('#pauseBtn'));
+    // 조작
+    act('나와서 쏘기', T ? '화면을 <b>누르고 있으면</b> 엄폐물 위로 나와 자동으로 쏴요.<br>1초 동안 누르고 있어 보세요.' : '마우스 왼쪽을 <b>누르고 있으면</b> 엄폐물 위로 나와 자동으로 쏴요.<br>1초 동안 누르고 있어 보세요.',
+      () => this.around(Game.ret.x, Game.ret.y, Game.retR() + 46), () => this.holdT > 1, { onStart: () => { this.holdT = 0; } });
+    act('숨기', '<b>손을 떼면</b> 엄폐물 뒤로 숨고 재장전돼요. 떼 보세요.', null, () => this.hideT > 0.7, { onStart: () => { this.hideT = 0; } });
+    act('조준', T ? '누른 채로 <b>손가락을 끌면</b> 조준점이 끈 방향으로 움직여요. 손가락이 조준점을 가리지 않게 돼 있어요.<br>조준점을 움직여 보세요.' : '조준점은 <b>마우스</b>를 따라가요. 마우스를 움직여 보세요.',
+      () => this.around(Game.ret.x, Game.ret.y, Game.retR() + 46), () => this.ret0 && Math.hypot(Game.ret.x - this.ret0.x, Game.ret.y - this.ret0.y) > 90, { onStart: () => { this.ret0 = { x: Game.ret.x, y: Game.ret.y }; } });
+    tap('탄약과 재장전', '조준점 둘레의 고리가 <b>남은 탄</b>이에요. 다 쓰면 재장전해야 하고, <b>숨어 있으면 더 빨리</b> 채워져요.', () => this.around(Game.ret.x, Game.ret.y, Game.retR() + 46));
+    // 분대·무기
+    tap('도트 — 연사', '빠르게 연속으로 쏴요. 어떤 상황에도 무난하고 <b>관통 미사일 격추</b>에 좋아요.<br>약점 대상: 404 버그 · 미사일', () => this.el('.mem[data-m="0"]'));
+    tap('렉스 — 산탄', '한 번에 7발을 넓게 퍼뜨리고, 달려오는 버그를 <b>뒤로 밀어내요</b>.<br>약점 대상: 기본 · 복제 · 작은 복제 버그', () => this.el('.mem[data-m="1"]'));
+    tap('핀 — 저격', '<b>누르고 있으면 충전</b>, 떼거나 다 차면 발사. 겹친 적을 꿰뚫고 무한루프 버그의 껍질도 뚫어요.<br>약점 대상: throw · 투명 · 무한루프 버그 · 보스 오류 줄', () => this.el('.mem[data-m="2"]'));
+    act('캐릭터 바꾸기', '렉스 아이콘을 눌러 렉스로 바꿔 보세요' + (T ? '.' : ' (2번 키).') + '<br>조작하지 않는 동료는 내가 나와서 쏠 때 같이 쏴요.', () => this.el('.mem[data-m="1"]'), () => Game.weapon === 1);
+    tap('약점 무기', '버그 옆 동그라미가 <b>약점 무기</b>예요: <b style="color:#C6F432">연</b> 연사 · <b style="color:#FFD34D">산</b> 산탄 · <b style="color:#6fe7ff">저</b> 저격.<br>약점 무기로 쏘면 피해가 <b>2배</b>. 맞는 캐릭터 버튼이 반짝이면 눌러서 바꾸세요.', () => this.el('#weapons'));
+    tap('롤백 — 3초 슬로우', '누르면 3초 동안 세상이 느려지고, 날아오던 공격은 되감기고, 화면 고장 하나가 바로 고쳐져요.<br>스테이지마다 정해진 횟수만 쓸 수 있어요' + (T ? '.' : ' (스페이스).'), () => this.el('.wpn.rb'));
+    // 버그 실전
+    tap('이제 실전!', '버그가 <b>한 마리씩</b> 나와요. 새 버그가 나오면 화면이 느려지고 설명이 떠요.<br>설명을 보고 직접 고쳐 보세요.', null);
+    for (const t of ['basic', 'throw', 'clone', 'ghost', 'e404', 'loop', 'hotfix']) bug(t);
+    tap('훈련 완료!', '이제 난이도를 골라 실전으로 가요.<br>버그 설명은 언제든 <b>도감</b>에서 다시 볼 수 있어요.', null, { end: true });
+    return S;
+  },
+  next() {
+    this.i++;
+    const s = this.steps[this.i];
+    if (!s) return this.finish();
+    this.cur = s; this.t = 0;
+    if (s.onStart) s.onStart();
+    if (s.kind === 'tap') { this.freeze(true); this.card(s.title, s.body, true); }
+    else if (s.kind === 'act') { this.freeze(false); this.card(s.title, s.body, false); }
+    else if (s.kind === 'bug') this.startBug(s);
+  },
+  freeze(on) { // 화면 멈춤 (설명을 읽는 동안)
+    if (on) { Game.state = 'tutor'; Game.ptr.down = false; }
+    else if (Game.state === 'tutor') { Game.state = 'play'; Game.last = performance.now(); }
+  },
+  card(title, body, tapToGo) {
+    const c = $('#spotCard');
+    c.querySelector('.tt').textContent = title;
+    c.querySelector('.tb').innerHTML = body;
+    c.querySelector('.tgo').textContent = tapToGo ? '탭해서 계속 ▶' : '직접 해 보세요';
+    c.classList.toggle('act', !tapToGo);
+    $('#spotCatch').classList.toggle('hidden', !tapToGo);
+    c.classList.remove('hidden');
+    this.tapReadyT = performance.now() + 350; // 실수로 바로 넘어가지 않게
+  },
+  tap() {
+    if (!this.cur || performance.now() < this.tapReadyT) return;
+    SND.play('click');
+    const s = this.cur;
+    if (s.kind === 'tap') { if (s.end) return this.finish(); return this.next(); }
+    if (s.kind === 'bug' && s.phase === 'intro') { s.phase = 'fight'; this.slow = 1; this.block = false; $('#spotCatch').classList.add('hidden'); this.card(s.title, s.tip, false); return; }
+    if (s.kind === 'event') { this.slow = 1; this.block = false; this.cur = s.back; $('#spotCatch').classList.add('hidden'); if (s.back) this.card(s.back.title, s.back.kind === 'bug' ? s.back.tip : s.back.body, false); }
+  },
+  // 버그 소개: 나오는 순간 슬로우 + 그 버그만 컬러로
+  startBug(s) {
+    this.freeze(false);
+    const e = DEX.find((x) => x.t === s.type);
+    s.title = BUGDEF[s.type].name; s.tip = '공략: ' + e.tip + ' ' + weakTag(s.type); s.phase = 'wait';
+    $('#spotCard').classList.add('hidden'); $('#spotCatch').classList.add('hidden');
+    Game.spawnEntry(s.type, true);
+    s.bug = Game.bugs[Game.bugs.length - 1];
+    s.waitT = 0;
+  },
+  // 첫 빨간 예고 원 · 첫 미사일: 슬로우 + 그 부분만 컬러
+  event(kind, obj) {
+    if (!this.active || this.shown[kind] || !this.cur || this.cur.kind === 'tap' || this.cur.kind === 'event' || (this.cur.kind === 'bug' && this.cur.phase === 'intro')) return;
+    this.shown[kind] = true;
+    const back = this.cur;
+    const ev = kind === 'packet'
+      ? { kind: 'event', back, title: '빨간 원 = 공격 예고!', body: '멀리 있는 버그가 에러 패킷을 던지기 직전이에요. 원이 다 차기 전에 <b>손을 떼서 숨으면</b> 엄폐물이 대신 맞아요.<br>그 전에 던진 버그를 잡으면 공격이 취소돼요.', spot: () => this.around(obj.x, obj.y, 74) }
+      : { kind: 'event', back, title: '관통 미사일!', body: '보라색 미사일은 <b>엄폐물을 뚫어요</b>. 숨어도 맞으니 나와서 연사로 쏴서 떨어뜨리세요 (2발).', spot: () => this.bugRect(obj) };
+    this.cur = ev; this.slow = 0.06; this.block = true; Game.ptr.down = false;
+    this.card(ev.title, ev.body, true);
+  },
+  finish() {
+    Store.set('tutDone', true);
+    this.stop();
+    Game.toTitle();
+    UI.pendingDaily = false; UI.showDiff();
+  },
+  // 매 프레임: 진행 조건 확인 + 흑백 칸과 강조 테두리 위치
+  tick(dt) {
+    if (!this.active) return;
+    const s = this.cur;
+    if (Game.out) this.holdT += dt; else if (this.holdT > 0) this.hideT += dt;
+    if (s && s.kind === 'act' && Game.state === 'play' && s.done()) this.next();
+    else if (s && s.kind === 'bug') {
+      const b = s.bug;
+      if (s.phase === 'wait') { // 화면에 들어오면 슬로우 + 설명
+        s.waitT += dt;
+        if (b && b.alive && b.onScreen && b.age > 0.5 && (b.role !== 'shoot' || b.arrived || b.age > 2.5)) {
+          s.phase = 'intro'; this.slow = 0.06; this.block = true; Game.ptr.down = false;
+          const e = DEX.find((x) => x.t === s.type);
+          this.card('새로운 버그 · ' + BUGDEF[s.type].name, `<span class="role">${e.role}</span> ${e.desc}`, true);
+        } else if (s.waitT > 8 || (b && !b.alive)) { s.phase = 'fight'; }
+      } else if (s.phase === 'fight') {
+        const left = Game.bugs.some((x) => x.alive && (x.hostile || x.role === 'item'));
+        if (!left && !Game.attacks.length) {
+          if (s.type === 'hotfix' && b && !b.collected && Game.run.st.hotfix === 0 && !s.retried) { s.retried = true; s.phase = 'wait'; Game.spawnEntry('hotfix', true); s.bug = Game.bugs[Game.bugs.length - 1]; s.waitT = 0; }
+          else this.next();
+        }
+      }
+    }
+    this.layout();
+  },
+  layout() {
+    const s = this.cur, W = Game.W, H = Game.H;
+    let r = null;
+    if (s) {
+      if (s.kind === 'bug') r = s.phase === 'intro' || s.phase === 'fight' ? this.bugRect(s.bug) : null;
+      else if (s.spot) r = s.spot();
+    }
+    const panes = $$('#spot .spane'), hole = $('#spot .shole');
+    if (!r) { // 강조 없음: 전체 흑백은 하지 않음
+      panes[0].style.cssText = 'left:0;top:0;width:0;height:0'; for (let k = 1; k < 4; k++) panes[k].style.cssText = 'width:0;height:0';
+      hole.style.display = 'none';
+    } else {
+      const x = clamp(r.x, 0, W), y = clamp(r.y, 0, H), x2 = clamp(r.x + r.w, 0, W), y2 = clamp(r.y + r.h, 0, H);
+      panes[0].style.cssText = `left:0;top:0;width:${W}px;height:${y}px`;
+      panes[1].style.cssText = `left:0;top:${y2}px;width:${W}px;height:${H - y2}px`;
+      panes[2].style.cssText = `left:0;top:${y}px;width:${x}px;height:${y2 - y}px`;
+      panes[3].style.cssText = `left:${x2}px;top:${y}px;width:${W - x2}px;height:${y2 - y}px`;
+      hole.style.cssText = `display:block;left:${x}px;top:${y}px;width:${x2 - x}px;height:${y2 - y}px`;
+    }
+    // 설명 카드는 강조 부분과 겹치지 않게
+    const c = $('#spotCard');
+    const cy = r ? r.y + r.h / 2 : H * 0.5;
+    c.style.top = cy > H * 0.5 ? '9%' : 'auto'; c.style.bottom = cy > H * 0.5 ? 'auto' : '20%';
+  },
+};
 
 
 })();</script>

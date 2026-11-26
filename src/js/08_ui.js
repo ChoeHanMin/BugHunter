@@ -60,7 +60,14 @@ const UI = {
     click('#btnDexBack', () => this.only(this.dexReturn || '#scrTitle'));
     click('#btnTutReset', () => { Store.set('tut', []); this.tutSeen = []; this.toast('안내 카드를 처음부터 다시 보여 줄게요'); });
     $('#tutor').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.tutorClose(); });
-    window.addEventListener('keydown', (e) => { if (Game.state === 'tutor' && (e.code === 'Space' || e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); this.tutorClose(); } }, true);
+    window.addEventListener('keydown', (e) => {
+      if (!(e.code === 'Space' || e.key === 'Enter')) { if (!(Game.state === 'tutor' && e.key === 'Escape')) return; }
+      if (Tut.active && !$('#spotCatch').classList.contains('hidden')) { e.preventDefault(); e.stopPropagation(); Tut.tap(); return; }
+      if (Game.state === 'tutor' && !Tut.active) { e.preventDefault(); this.tutorClose(); }
+    }, true);
+    const tutTap = (e) => { e.preventDefault(); e.stopPropagation(); Tut.tap(); };
+    $('#spotCatch').addEventListener('pointerdown', tutTap);
+    $('#spotCard').addEventListener('pointerdown', tutTap);
     window.addEventListener('resize', () => this.checkRotate());
     window.addEventListener('orientationchange', () => setTimeout(() => this.checkRotate(), 200));
     this.checkRotate();
@@ -70,6 +77,7 @@ const UI = {
     click('#btnDiffBack', () => this.only('#scrTitle'));
     $$('.dcard').forEach((b) => b.addEventListener('click', () => {
       SND.init();
+      if (b.dataset.d === 'tutorial') { SND.play('click'); this.only(); Game.newRun(false, 'tutorial'); return; }
       if (b.dataset.d === 'hard' && !this.hardOpen()) { SND.play('jam'); this.toast('난이도 중을 한 번 깨면 열려요'); return; }
       SND.play('click'); Store.set('diff', b.dataset.d); this.only(); Game.newRun(this.pendingDaily, b.dataset.d);
     }));
@@ -105,7 +113,7 @@ const UI = {
     $$('.mem').forEach((b, i) => { const c = b.querySelector('.pt'), im = IMG.portrait && IMG.portrait[i]; if (!im) return;
       const draw = () => { const g = c.getContext('2d'); const big = im instanceof HTMLImageElement; g.imageSmoothingEnabled = big; g.imageSmoothingQuality = 'high'; g.clearRect(0, 0, 64, 64); g.drawImage(im, 0, 0, 64, 64); };
       if (im instanceof HTMLImageElement && !im.complete) im.onload = draw; else draw(); });
-    $('#stageLbl').innerHTML = 'STAGE ' + Game.S.def.id + ' · ' + Game.S.def.name + `<span class="diffchip" style="color:${Game.D.key === 'hard' ? '#FF4D5E' : '#aab2a3'}">${Game.D.name}</span>`;
+    $('#stageLbl').innerHTML = (Game.S.def.tutorial ? 'TUTORIAL' : 'STAGE ' + Game.S.def.id) + ' · ' + Game.S.def.name + `<span class="diffchip" style="color:${Game.D.key === 'hard' ? '#FF4D5E' : '#aab2a3'}">${Game.D.name}</span>`;
     $('#helpBadge').classList.toggle('hidden', !Game.run.help[Game.run.stage]);
     this._hud = {};
   },
@@ -169,6 +177,7 @@ const UI = {
   // ----- 안내 카드: 처음 한 번, 전투를 멈추고 설명 -----
   tutSeen: null, tutQ: [],
   tutor(key, target) {
+    if (Game.isTut()) return; // 튜토리얼 모드는 자체 안내 사용
     if (!this.tutSeen) this.tutSeen = Store.get('tut', []);
     if (this.tutSeen.includes(key) || this.tutQ.some((q) => q.key === key)) return;
     let card;

@@ -230,3 +230,19 @@ button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
 .wpn.rb .sub{font-size:9px;color:#8fd8e8;margin-top:1px}
 #hud .lbl,#hud .num{text-shadow:1px 1px 0 #000,-1px 0 0 #000,0 -1px 0 #000,0 0 4px #000}
 .sndhint{font-size:13px;color:var(--lime);border:1px dashed var(--lime);padding:4px 10px;animation:blink 1.2s infinite steps(2)}
+/* 튜토리얼 스포트라이트 */
+#spot{position:absolute;inset:0;z-index:25;pointer-events:none}
+#spot .spane{position:absolute;backdrop-filter:grayscale(1) brightness(.5);-webkit-backdrop-filter:grayscale(1) brightness(.5);background:rgba(0,0,0,.12)}
+#spot .shole{position:absolute;border:3px solid var(--lime);box-shadow:0 0 0 2px #000,0 0 18px rgba(198,244,50,.8);animation:shole 1s infinite steps(2)}
+@keyframes shole{50%{border-color:#fff}}
+#spotCatch{position:absolute;inset:0;pointer-events:auto}
+#spotCard{position:absolute;left:50%;transform:translateX(-50%);width:min(380px,calc(100% - 24px));background:#0f120d;border:2px solid var(--lime);box-shadow:5px 5px 0 #000;padding:12px 14px;display:flex;flex-direction:column;gap:5px;pointer-events:auto;bottom:20%}
+#spotCard.act{pointer-events:none;border-color:var(--yel)}
+#spotCard .ttag{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--yel)}
+#spotCard .tt{font-size:17px;font-weight:800;color:var(--lime)}
+#spotCard .tb{font-size:13.5px;line-height:1.55;color:#dfe6d8}
+#spotCard .tb .role{font-family:var(--mono);font-size:11px;color:#1a1d19;background:var(--yel);padding:0 5px;margin-right:4px}
+#spotCard .tgo{font-family:var(--mono);font-size:11px;color:#8a9084;text-align:right;animation:blink 1s infinite steps(2)}
+.diffs{grid-template-columns:repeat(4,1fr)}
+@media (max-width:640px){.diffs{grid-template-columns:1fr 1fr}}
+.dcard.tut b{color:var(--yel)}.dcard.tut{border-color:#5a5330}
