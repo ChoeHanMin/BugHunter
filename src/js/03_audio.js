@@ -1,8 +1,9 @@
 // ---------- 소리 (Web Audio 직접 합성) ----------
 const SND = {
   ctx: null, master: null, sfxG: null, musG: null, noise: null,
+  running() { return !!this.ctx && this.ctx.state === 'running'; },
   init() {
-    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+    if (this.ctx) { if (this.ctx.state !== 'running') { const p = this.ctx.resume(); if (p && p.catch) p.catch(() => {}); } return; }
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;

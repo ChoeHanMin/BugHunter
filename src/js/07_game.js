@@ -66,6 +66,9 @@ const Game = {
     window.addEventListener('resize', () => this.resize());
     this.bindInput();
     this.toTitle();
+    // 열자마자 소리 켜기 시도 (예전에 이 사이트에서 소리를 들은 적이 있으면 바로 나올 수 있음)
+    try { SND.init(); if (SND.ctx) { MUS.startTitle(); SND.ctx.onstatechange = () => UI.soundHint(); } } catch (e) { /* 소리 없이 진행 */ }
+    UI.soundHint();
     this.last = performance.now();
     const loop = (t) => { requestAnimationFrame(loop); this.frame(t); };
     requestAnimationFrame(loop);
@@ -147,7 +150,13 @@ const Game = {
     $$('.mem').forEach((b) => b.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); SND.init(); this.selectMember(+b.dataset.m); }));
     $$('.wpn.rb').forEach((b) => b.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); SND.init(); this.rollback(); }));
     // 타이틀 음악은 첫 터치·클릭 뒤에 시작 (브라우저 정책)
-    window.addEventListener('pointerdown', () => { SND.init(); if (this.state === 'title') MUS.startTitle(); }, true);
+    // 브라우저는 사용자의 첫 입력 전엔 소리를 막음. 폰 터치는 손을 '뗄 때' 허락되므로 여러 이벤트에서 모두 시도
+    const unlock = () => {
+      SND.init();
+      if (this.state === 'title' && SND.ctx) MUS.startTitle();
+      UI.soundHint();
+    };
+    for (const ev of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'mousedown', 'click', 'keydown']) window.addEventListener(ev, unlock, { capture: true, passive: true });
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'play') UI.pause(); });
     window.addEventListener('blur', () => { if (this.state === 'play') UI.pause(); });
   },

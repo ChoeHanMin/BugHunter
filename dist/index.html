@@ -225,6 +225,7 @@ padding:8px 14px;font-size:14px;pointer-events:none;white-space:nowrap;max-width
 @keyframes sug{50%{border-color:#fff;box-shadow:0 0 14px rgba(255,255,255,.55)}}
 .wpn.rb .sub{font-size:9px;color:#8fd8e8;margin-top:1px}
 #hud .lbl,#hud .num{text-shadow:1px 1px 0 #000,-1px 0 0 #000,0 -1px 0 #000,0 0 4px #000}
+.sndhint{font-size:13px;color:var(--lime);border:1px dashed var(--lime);padding:4px 10px;animation:blink 1.2s infinite steps(2)}
 </style>
 </head>
 <body>
@@ -278,6 +279,7 @@ padding:8px 14px;font-size:14px;pointer-events:none;white-space:nowrap;max-width
       </div>
     </div>
     <div class="rot" id="rotHint">📱↻ 가로 화면을 권장해요</div>
+    <div class="sndhint" id="sndHint">🔊 화면을 한 번 누르면 소리가 나와요</div>
     <div class="foot">겜타즈 2027 · 2026 saaskr 게임 어워드 · 효과음 Kenney.nl (CC0)</div>
   </section>
 
@@ -799,8 +801,9 @@ function charCanvas(s, i) {
 // ---------- 소리 (Web Audio 직접 합성) ----------
 const SND = {
   ctx: null, master: null, sfxG: null, musG: null, noise: null,
+  running() { return !!this.ctx && this.ctx.state === 'running'; },
   init() {
-    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+    if (this.ctx) { if (this.ctx.state !== 'running') { const p = this.ctx.resume(); if (p && p.catch) p.catch(() => {}); } return; }
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
@@ -1795,6 +1798,9 @@ const Game = {
     window.addEventListener('resize', () => this.resize());
     this.bindInput();
     this.toTitle();
+    // 열자마자 소리 켜기 시도 (예전에 이 사이트에서 소리를 들은 적이 있으면 바로 나올 수 있음)
+    try { SND.init(); if (SND.ctx) { MUS.startTitle(); SND.ctx.onstatechange = () => UI.soundHint(); } } catch (e) { /* 소리 없이 진행 */ }
+    UI.soundHint();
     this.last = performance.now();
     const loop = (t) => { requestAnimationFrame(loop); this.frame(t); };
     requestAnimationFrame(loop);
@@ -1876,7 +1882,13 @@ const Game = {
     $$('.mem').forEach((b) => b.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); SND.init(); this.selectMember(+b.dataset.m); }));
     $$('.wpn.rb').forEach((b) => b.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); SND.init(); this.rollback(); }));
     // 타이틀 음악은 첫 터치·클릭 뒤에 시작 (브라우저 정책)
-    window.addEventListener('pointerdown', () => { SND.init(); if (this.state === 'title') MUS.startTitle(); }, true);
+    // 브라우저는 사용자의 첫 입력 전엔 소리를 막음. 폰 터치는 손을 '뗄 때' 허락되므로 여러 이벤트에서 모두 시도
+    const unlock = () => {
+      SND.init();
+      if (this.state === 'title' && SND.ctx) MUS.startTitle();
+      UI.soundHint();
+    };
+    for (const ev of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'mousedown', 'click', 'keydown']) window.addEventListener(ev, unlock, { capture: true, passive: true });
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'play') UI.pause(); });
     window.addEventListener('blur', () => { if (this.state === 'play') UI.pause(); });
   },
@@ -3162,7 +3174,7 @@ const UI = {
     const s = settings;
     $('#setSound').checked = s.sound; $('#setSfx').value = s.sfx * 100; $('#setMusic').value = s.music * 100;
     $('#setFlash').checked = s.reduceFlash; $('#setQuality').value = s.quality;
-    $('#setSound').addEventListener('change', (e) => { s.sound = e.target.checked; SND.apply(); saveSettings(); });
+    $('#setSound').addEventListener('change', (e) => { s.sound = e.target.checked; SND.apply(); saveSettings(); this.soundHint(); });
     $('#setSfx').addEventListener('input', (e) => { s.sfx = e.target.value / 100; SND.apply(); saveSettings(); });
     $('#setSfx').addEventListener('change', () => SND.play('hit'));
     $('#setMusic').addEventListener('input', (e) => { s.music = e.target.value / 100; SND.apply(); saveSettings(); });
@@ -3190,6 +3202,11 @@ const UI = {
   // 상 난이도 잠금: 중(또는 상)을 한 번 깨면 열림. 저장이 막힌 환경에서는 이번 접속 동안만 기억
   hardOpenMem: false,
   hardOpen() { return this.hardOpenMem || !!Store.get('records', {}).hardOpen; },
+  // 소리가 브라우저에 막혀 있는 동안만 안내 (설정에서 소리를 끈 경우는 안내 안 함)
+  soundHint() {
+    const el = $('#sndHint'); if (!el) return;
+    el.classList.toggle('hidden', !settings.sound || SND.running());
+  },
   // ----- 폰 가로 화면: 세로로 돌려 달라고 안내 -----
   checkRotate() {
     const land = IS_TOUCH && window.innerWidth > window.innerHeight && window.innerHeight < 600;

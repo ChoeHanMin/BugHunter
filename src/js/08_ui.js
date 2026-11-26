@@ -90,7 +90,7 @@ const UI = {
     const s = settings;
     $('#setSound').checked = s.sound; $('#setSfx').value = s.sfx * 100; $('#setMusic').value = s.music * 100;
     $('#setFlash').checked = s.reduceFlash; $('#setQuality').value = s.quality;
-    $('#setSound').addEventListener('change', (e) => { s.sound = e.target.checked; SND.apply(); saveSettings(); });
+    $('#setSound').addEventListener('change', (e) => { s.sound = e.target.checked; SND.apply(); saveSettings(); this.soundHint(); });
     $('#setSfx').addEventListener('input', (e) => { s.sfx = e.target.value / 100; SND.apply(); saveSettings(); });
     $('#setSfx').addEventListener('change', () => SND.play('hit'));
     $('#setMusic').addEventListener('input', (e) => { s.music = e.target.value / 100; SND.apply(); saveSettings(); });
@@ -118,6 +118,11 @@ const UI = {
   // 상 난이도 잠금: 중(또는 상)을 한 번 깨면 열림. 저장이 막힌 환경에서는 이번 접속 동안만 기억
   hardOpenMem: false,
   hardOpen() { return this.hardOpenMem || !!Store.get('records', {}).hardOpen; },
+  // 소리가 브라우저에 막혀 있는 동안만 안내 (설정에서 소리를 끈 경우는 안내 안 함)
+  soundHint() {
+    const el = $('#sndHint'); if (!el) return;
+    el.classList.toggle('hidden', !settings.sound || SND.running());
+  },
   // ----- 폰 가로 화면: 세로로 돌려 달라고 안내 -----
   checkRotate() {
     const land = IS_TOUCH && window.innerWidth > window.innerHeight && window.innerHeight < 600;
