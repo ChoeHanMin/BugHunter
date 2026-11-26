@@ -228,3 +228,4 @@ button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
 .mem.suggest,.wpn.rb.suggest{animation:sug .6s infinite steps(2)}
 @keyframes sug{50%{border-color:#fff;box-shadow:0 0 14px rgba(255,255,255,.55)}}
 .wpn.rb .sub{font-size:9px;color:#8fd8e8;margin-top:1px}
+#hud .lbl,#hud .num{text-shadow:1px 1px 0 #000,-1px 0 0 #000,0 -1px 0 #000,0 0 4px #000}

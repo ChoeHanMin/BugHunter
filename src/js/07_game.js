@@ -888,7 +888,7 @@ const Game = {
     this.coverMat.color.set(S.def.cover); if (this.cover.broken) this.coverMat.color.multiplyScalar(0.45);
     // 기댈 벽: 화면 왼쪽 26% 지점에 오른쪽 모서리가 오게, 3인칭일 때만
     const tpk = this.tpK(), sw = this.sideWall;
-    sw.visible = tpk > 0.15 && this.state !== 'clearing' && S.phase !== 'move';
+    sw.visible = tpk > 0.15 && this.state !== 'clearing' && S.phase !== 'move' && !ASSETS.cover_side; // 그림이 있으면 2D로 그림
     if (sw.visible) {
       const hw = 2.1 * this.tanHalf * this.camera.aspect, right = (0.26 * 2 - 1) * hw;
       sw.position.set(right - 0.65 - (1 - tpk) * 1.6, 0.2, -2.1);
@@ -932,12 +932,25 @@ const Game = {
     const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height; if (!iw) return;
     const W = this.W, H = this.H, S = this.S;
     const h = W < H ? H * 0.5 : H * 0.72, w = h * iw / ih;
-    let cx = W * (W < H ? 0.3 : 0.27), y = H - h * 0.97;
+    let cx = W * (W < H ? 0.36 : 0.27), y = H - h * 0.97;
     if (this.hurtT > 0) cx += Math.sin(this.hurtT * 40) * 5; // 맞으면 흔들림
     if (S.phase === 'move') { y -= Math.abs(Math.sin(S.moveT * 9)) * h * 0.05; cx += Math.sin(S.moveT * 4.5) * w * 0.04; }
     y += this.outK * h * 0.35; // 일어서며 화면 밖으로
     if (this.attacks.some((q) => q.t > q.dur * 0.6)) cx += (Math.random() - 0.5) * 4; // 움찔
     const br = 1 + Math.sin(this.time * 2.2) * 0.012; // 숨쉬기
+    // 기댈 벽 그림 (assets/cover_side.png): 오른쪽 모서리가 캐릭터 왼쪽 어깨쯤
+    if (ASSETS.cover_side && S.phase !== 'move') {
+      if (!this._sideImg) { this._sideImg = new Image(); this._sideImg.src = ASSETS.cover_side; }
+      const si = this._sideImg;
+      if (si.complete && si.naturalWidth) {
+        const sh = H * 1.04, swd = sh * si.naturalWidth / si.naturalHeight;
+        const right = cx - w * 0.16 - (1 - a) * swd * 0.6; // 나올 때 왼쪽으로 빠짐
+        g.save(); g.globalAlpha = a; g.imageSmoothingEnabled = false;
+        if (this.hudFlipped) { g.translate(W, 0); g.scale(-1, 1); } // UI 뒤집힘 고장: 오른쪽으로
+        g.drawImage(si, right - swd, H - sh, swd, sh);
+        g.restore();
+      }
+    }
     if (this.hudFlipped) cx = W - cx;
     g.save(); g.globalAlpha = a; g.imageSmoothingEnabled = im instanceof HTMLImageElement;
     g.translate(cx, y + h); g.scale(this.hudFlipped ? -1 : 1, br); g.drawImage(im, -w / 2, -h, w, h);
