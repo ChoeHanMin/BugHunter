@@ -118,6 +118,8 @@ function buildTextures() {
   IMG.pose = SQUAD_LOOK.map((s, i) => ({
     base: IMG.char[i],
     flinch: ASSETS['char_' + s.key + '_flinch'] ? imgOf(ASSETS['char_' + s.key + '_flinch']) : IMG.char[i],
+    run: ASSETS['char_' + s.key + '_run'] ? imgOf(ASSETS['char_' + s.key + '_run']) : null,
+    run2: ASSETS['char_' + s.key + '_run2'] ? imgOf(ASSETS['char_' + s.key + '_run2']) : null,
     hurt: ASSETS['char_' + s.key + '_hurt'] ? imgOf(ASSETS['char_' + s.key + '_hurt']) : IMG.char[i],
   }));
   // 무한루프 껍질 링

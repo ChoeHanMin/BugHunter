@@ -929,13 +929,19 @@ const Game = {
     const a = clamp(1 - this.outK * 2.2, 0, 1); if (a <= 0.01 || !IMG.char) return;
     const P = (IMG.pose && IMG.pose[this.weapon]) || { base: IMG.char[this.weapon] || IMG.char[0] };
     const incoming = this.attacks.some((q) => q.t > q.dur * 0.45) || this.bugs.some((b) => b.alive && b.role !== 'shoot' && b.hostile && b.dist < 6);
-    const im = this.hurtT > 0 ? (P.hurt || P.base) : incoming ? (P.flinch || P.base) : P.base;
+    const moving = this.S.phase === 'move';
+    // 이동 중: 달리는 뒷모습 (run/run2를 번갈아). 그림이 없으면 기본 자세가 통통 튀며 대신함
+    const runIm = P.run && (P.run2 && Math.floor(this.S.moveT * 6) % 2 ? P.run2 : P.run);
+    const im = moving && runIm ? runIm : this.hurtT > 0 ? (P.hurt || P.base) : incoming ? (P.flinch || P.base) : P.base;
     const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height; if (!iw) return;
     const W = this.W, H = this.H, S = this.S;
     const h = W < H ? H * 0.5 : H * 0.72, w = h * iw / ih;
     let cx = W * (W < H ? 0.36 : 0.27), y = H - h * 0.97;
     if (this.hurtT > 0) cx += Math.sin(this.hurtT * 40) * 5; // 맞으면 흔들림
-    if (S.phase === 'move') { y -= Math.abs(Math.sin(S.moveT * 9)) * h * 0.05; cx += Math.sin(S.moveT * 4.5) * w * 0.04; }
+    if (moving) {
+      if (runIm) cx = W * 0.5; // 뒷모습은 화면 가운데에서 앞으로 달려감
+      y -= Math.abs(Math.sin(S.moveT * 9)) * h * 0.05; cx += Math.sin(S.moveT * 4.5) * w * 0.04;
+    }
     y += this.outK * h * 0.35; // 일어서며 화면 밖으로
     if (this.attacks.some((q) => q.t > q.dur * 0.6)) cx += (Math.random() - 0.5) * 4; // 움찔
     const br = 1 + Math.sin(this.time * 2.2) * 0.012; // 숨쉬기
@@ -1245,7 +1251,7 @@ const Game = {
     }
   },
   drawReticle(g) {
-    const m = this.member(); if (!m) return;
+    const m = this.member(); if (!m || this.S.phase === 'move') return; // 이동 중엔 조준선 숨김
     const a = this.aim(), r = this.retR(), mono = 'ui-monospace,Menlo,monospace';
     const moving = this.S.phase === 'move';
     const slip = this.hasGlitch('slip');

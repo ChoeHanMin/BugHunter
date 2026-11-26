@@ -28,6 +28,7 @@
 | `char_*_flinch.png` / `char_*_hurt.png` | 같은 캐릭터의 움찔 / 고통 자세 (기본과 같은 크기·위치) | 가로 230 | 위와 같음 |
 | `cover_side.png` | 3인칭 엄폐 때 캐릭터가 기대는 키 큰 벽 (오른쪽 모서리가 그림 끝) | 가로 360 | 투명 배경, 1:3 |
 | `cover_<스테이지>.png` / `cover_side_<스테이지>.png` | 스테이지별 낮은 엄폐물 / 옆 벽 (forest·city·subway·physics, 없으면 공용) | 가로 800 / 높이 860 | 투명 배경 |
+| `char_*_run.png` / `char_*_run2.png` | 이동 중 달리는 뒷모습 (2장 번갈아, 2번째는 선택) | 가로 230 | 투명 배경, 1:2, 발이 아래 끝, 여백 안 자름 |
 | `thumbnail.png` | saaskr 업로드용 썸네일 (게임에 안 들어감) | — | — |
 
 ChatGPT에 쓸 프롬프트는 `../PROMPTS.md`에 있어요.
