@@ -246,3 +246,17 @@ button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
 .diffs{grid-template-columns:repeat(4,1fr)}
 @media (max-width:640px){.diffs{grid-template-columns:1fr 1fr}}
 .dcard.tut b{color:var(--yel)}.dcard.tut{border-color:#5a5330}
+/* PC: 1920×1080 기준 화면을 창에 맞게 축소·확대, 남는 곳은 검은 여백 */
+body.pc{background:#000}
+body.pc #app{position:fixed;overflow:hidden;background:var(--bg)}
+body.pc #hud .lbl{font-size:16px}body.pc #hud .num{font-size:19px}body.pc #hud .big{font-size:32px}
+body.pc .bar{height:14px}body.pc .bar.stab{width:260px}body.pc .bar.prog{width:380px}
+body.pc #pauseBtn{width:58px;height:58px;font-size:20px}body.pc .hud-r{right:86px}body.pc #hud.flipped .hud-r{right:auto;left:86px}
+body.pc .mem{width:124px;height:84px;grid-template-columns:42px 1fr}body.pc .mem .pt{width:42px;height:42px}body.pc .mem .mn{font-size:18px}body.pc .mem .mr{font-size:13px}
+body.pc .wpn.rb{min-width:96px;height:84px}body.pc .wpn .ic{font-size:24px}body.pc .wpn .nm{font-size:15px}
+body.pc #codeLog{width:380px;font-size:14px}
+body.pc #hint{font-size:18px}body.pc #toast{font-size:19px}body.pc #banner .b1{font-size:22px}body.pc #banner .b2{font-size:58px}
+body.pc .panel{width:560px;font-size:17px}body.pc .panel.wide{width:1000px}body.pc .btn{font-size:20px;padding:15px}
+body.pc .logo{font-size:110px}body.pc .logoimg{width:820px}body.pc .sub{font-size:26px}body.pc .menu{width:400px}
+body.pc #spotCard{width:520px}body.pc #spotCard .tt{font-size:22px}body.pc #spotCard .tb{font-size:17px}
+body.pc .tcard{width:480px}body.pc .tt{font-size:24px}body.pc .tb{font-size:17px}

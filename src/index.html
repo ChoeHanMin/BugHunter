@@ -62,17 +62,14 @@
     <div class="foot">겜타즈 2027 · 2026 saaskr 게임 어워드 · 효과음 Kenney.nl (CC0)</div>
   </section>
 
-  <!-- 하는 법 -->
-  <section id="scrHow" class="scr hidden">
-    <div class="panel wide">
-      <h2>하는 법</h2>
-      <div class="how">
-        <div class="card"><div class="pic" id="howPic1"></div><b>① 누르면 나가서 쏘기</b><p><span class="tOnly">화면을 누르고 있으면 엄폐물 위로 나와 자동 사격.<br>손가락을 끌면 조준점이 움직여요.</span><span class="mOnly">마우스 왼쪽을 누르고 있으면 엄폐물 위로 나와 자동 사격.</span></p></div>
-        <div class="card"><div class="pic glitchy" id="howPic2"></div><b>② 떼면 숨기 · 재장전</b><p>빨간 예고 원이 뜨면 손을 떼서 숨으세요.<br>달려오는 버그와 관통 미사일은 숨어도 맞으니 쏴서 막아요.</p></div>
-        <div class="card"><div class="pic wp" id="howPic3"></div><b>③ 3인 분대</b><p>도트(연사) · 렉스(산탄) · 핀(저격)<br>아이콘으로 조작할 캐릭터를 바꾸면 나머지는 알아서 쏴요.</p></div>
-      </div>
-      <button class="btn pri" id="btnHowGo">시작하기</button>
-      <button class="btn ghost" id="btnHowSkip">건너뛰기</button>
+  <!-- 처음 한 번: 튜토리얼 권유 -->
+  <section id="scrAskTut" class="scr dim hidden">
+    <div class="panel">
+      <div class="tag">처음이신가요?</div>
+      <h2>튜토리얼을 먼저 해 볼래요?</h2>
+      <p style="margin:0;color:#cfd6c8;font-size:14px;line-height:1.55">크래시 없는 훈련장에서 조작, 분대와 무기, 버그 7종을 하나씩 직접 해 보며 배워요. 3~4분이면 끝나요.<br>끝까지 하면 도전 과제 <b style="color:var(--lime)">"훈련 수료"</b>를 받아요.</p>
+      <button class="btn pri" id="btnAskTutYes">튜토리얼 하기</button>
+      <button class="btn" id="btnAskTutNo">바로 시작</button>
     </div>
   </section>
 

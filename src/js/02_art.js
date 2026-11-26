@@ -213,7 +213,7 @@ function gunCanvas(stripe) {
   return c;
 }
 const ASSET_KEY = { basic: 'bug_basic', clone: 'bug_clone', mini: 'bug_mini', ghost: 'bug_ghost', e404: 'bug_404', loop: 'bug_loop', throw: 'bug_throw' };
-function bugImgCanvas(type) { // DOM용 (하는 법/크래시 화면)
+function bugImgCanvas(type) { // DOM용 (크래시 화면)
   const url = ASSETS[ASSET_KEY[type]];
   if (url) { const img = new Image(); img.src = url; img.className = 'asset'; return img; }
   const src = bugCanvas(type, 0);

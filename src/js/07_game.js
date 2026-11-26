@@ -52,9 +52,6 @@ const Game = {
 
   init() {
     buildTextures(); initGeo();
-    // 하는 법 ③: 분대 얼굴
-    const hp = $('#howPic3');
-    if (hp) IMG.portrait.forEach((im) => { const c = document.createElement('canvas'); c.width = c.height = 64; const d = () => { const g = c.getContext('2d'); g.imageSmoothingEnabled = im instanceof HTMLImageElement; g.drawImage(im, 0, 0, 64, 64); }; if (im instanceof HTMLImageElement && !im.complete) im.onload = d; else d(); hp.append(c); });
     FX.init($('#gl'));
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(70, 1, 0.1, 400);
@@ -75,7 +72,8 @@ const Game = {
     requestAnimationFrame(loop);
   },
   resize() {
-    this.W = window.innerWidth; this.H = window.innerHeight;
+    VIEW.fit();
+    this.W = VIEW.w; this.H = VIEW.h;
     const a = this.W / this.H;
     this.camera.aspect = a;
     // 세로 화면이면 시야각을 넓혀 보정
@@ -83,7 +81,7 @@ const Game = {
     this.camera.updateProjectionMatrix();
     this.tanHalf = Math.tan((this.camera.fov * Math.PI) / 360);
     FX.resize();
-    const pr = Math.min(window.devicePixelRatio || 1, 2);
+    const pr = VIEW.pc ? VIEW.pr() : Math.min(window.devicePixelRatio || 1, 2);
     this.ov.width = this.W * pr; this.ov.height = this.H * pr; this.g2.setTransform(pr, 0, 0, pr, 0, 0);
     if (!this.ret.x) { this.ret.x = this.W / 2; this.ret.y = this.H * 0.42; }
     this.ret.x = clamp(this.ret.x, 0, this.W); this.ret.y = clamp(this.ret.y, 0, this.H);
@@ -122,19 +120,21 @@ const Game = {
       if (this.ptr.id != null && this.ptr.down && e.pointerType === 'touch') return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       this.ptr.id = e.pointerId; this.ptr.down = true; this.ptr.has = true; this.ptr.mouse = e.pointerType === 'mouse';
-      this.ptr.lx = e.clientX; this.ptr.ly = e.clientY;
-      if (this.ptr.mouse) { this.ret.x = e.clientX; this.ret.y = e.clientY; }
-      else this.taps.push({ x: e.clientX, y: e.clientY, t: 0 });
+      const ex = VIEW.x(e.clientX), ey = VIEW.y(e.clientY);
+      this.ptr.lx = ex; this.ptr.ly = ey;
+      if (this.ptr.mouse) { this.ret.x = ex; this.ret.y = ey; }
+      else this.taps.push({ x: ex, y: ey, t: 0 });
       e.preventDefault();
     });
     window.addEventListener('pointermove', (e) => {
-      if (e.pointerType === 'mouse') { this.ret.x = e.clientX; this.ret.y = e.clientY; this.ptr.has = true; this.ptr.mouse = true; return; }
+      const ex = VIEW.x(e.clientX), ey = VIEW.y(e.clientY);
+      if (e.pointerType === 'mouse') { this.ret.x = clamp(ex, 0, this.W); this.ret.y = clamp(ey, 0, this.H); this.ptr.has = true; this.ptr.mouse = true; return; }
       if (e.pointerId !== this.ptr.id) return;
       // 터치: 손가락이 조준점을 가리지 않게, 끈 만큼 조준점이 움직임
       const k = 1.35;
-      this.ret.x = clamp(this.ret.x + (e.clientX - this.ptr.lx) * k, 8, this.W - 8);
-      this.ret.y = clamp(this.ret.y + (e.clientY - this.ptr.ly) * k, 8, this.H - 8);
-      this.ptr.lx = e.clientX; this.ptr.ly = e.clientY;
+      this.ret.x = clamp(this.ret.x + (ex - this.ptr.lx) * k, 8, this.W - 8);
+      this.ret.y = clamp(this.ret.y + (ey - this.ptr.ly) * k, 8, this.H - 8);
+      this.ptr.lx = ex; this.ptr.ly = ey;
     });
     const up = (e) => { if (e.pointerId === this.ptr.id) { this.ptr.down = false; this.ptr.id = null; this.release(); } };
     window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);

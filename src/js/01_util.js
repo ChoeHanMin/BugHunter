@@ -42,6 +42,20 @@ const DAILY_SEED = hashStr('bughunter-' + TODAY_KEY);
 const IS_TOUCH = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints > 0 && 'ontouchstart' in window);
 if (IS_TOUCH) document.body.classList.add('touch');
 
+// PC는 1920×1080 기준 화면을 창 크기에 맞게 통째로 확대·축소 (남는 곳은 검은 여백)
+const VIEW = { pc: !IS_TOUCH, w: 1920, h: 1080, s: 1, ox: 0, oy: 0,
+  fit() {
+    const app = document.getElementById('app');
+    if (!this.pc) { this.w = window.innerWidth; this.h = window.innerHeight; this.s = 1; this.ox = this.oy = 0; if (app) app.style.cssText = ''; return; }
+    this.w = 1920; this.h = 1080;
+    this.s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    this.ox = (window.innerWidth - 1920 * this.s) / 2; this.oy = (window.innerHeight - 1080 * this.s) / 2;
+    if (app) app.style.cssText = `width:1920px;height:1080px;inset:auto;left:0;top:0;transform-origin:0 0;transform:translate(${this.ox}px,${this.oy}px) scale(${this.s})`;
+  },
+  x(cx) { return (cx - this.ox) / this.s; }, y(cy) { return (cy - this.oy) / this.s; }, // 화면 좌표 → 게임 좌표
+  pr() { return Math.min((window.devicePixelRatio || 1) * this.s, 2); }, // 실제로 보이는 크기에 맞춘 해상도
+};
+if (VIEW.pc) document.body.classList.add('pc');
 const settings = Object.assign({ sound: true, sfx: 0.8, music: 0.6, reduceFlash: false, quality: 'auto' }, Store.get('settings', {}));
 function saveSettings() { Store.set('settings', settings); }
 

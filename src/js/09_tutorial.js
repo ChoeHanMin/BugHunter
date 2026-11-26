@@ -16,7 +16,7 @@ const Tut = {
     if (Game.state === 'tutor') Game.state = 'play';
   },
   // ----- 화면 위치 -----
-  el(sel, pad = 6) { const e = $(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 }; },
+  el(sel, pad = 6) { const e = $(sel); if (!e) return null; const r = e.getBoundingClientRect(), s = VIEW.s; return { x: VIEW.x(r.left) - pad, y: VIEW.y(r.top) - pad, w: r.width / s + pad * 2, h: r.height / s + pad * 2 }; },
   coverBar() { const W = Game.W, H = Game.H, w = Math.min(220, W * 0.5); return { x: (W - w) / 2 - 8, y: H - (W < H ? 150 : 96) - 20, w: w + 16, h: 34 }; },
   around(x, y, r) { return { x: x - r, y: y - r, w: r * 2, h: r * 2 }; },
   bugRect(b) { return b && b.alive && b.onScreen ? this.around(b.sx, b.sy, Math.max(40, b.sr * 1.5)) : null; },
@@ -109,6 +109,8 @@ const Tut = {
   },
   finish() {
     Store.set('tutDone', true);
+    const rec = Store.get('records', {}); rec.ch = rec.ch || {};
+    if (!rec.ch.tutorial) { rec.ch.tutorial = true; Store.set('records', rec); SND.play('unlock'); setTimeout(() => UI.toast('🏆 도전 과제 달성: 훈련 수료'), 300); }
     this.stop();
     Game.toTitle();
     UI.pendingDaily = false; UI.showDiff();

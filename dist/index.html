@@ -242,6 +242,20 @@ padding:8px 14px;font-size:14px;pointer-events:none;white-space:nowrap;max-width
 .diffs{grid-template-columns:repeat(4,1fr)}
 @media (max-width:640px){.diffs{grid-template-columns:1fr 1fr}}
 .dcard.tut b{color:var(--yel)}.dcard.tut{border-color:#5a5330}
+/* PC: 1920×1080 기준 화면을 창에 맞게 축소·확대, 남는 곳은 검은 여백 */
+body.pc{background:#000}
+body.pc #app{position:fixed;overflow:hidden;background:var(--bg)}
+body.pc #hud .lbl{font-size:16px}body.pc #hud .num{font-size:19px}body.pc #hud .big{font-size:32px}
+body.pc .bar{height:14px}body.pc .bar.stab{width:260px}body.pc .bar.prog{width:380px}
+body.pc #pauseBtn{width:58px;height:58px;font-size:20px}body.pc .hud-r{right:86px}body.pc #hud.flipped .hud-r{right:auto;left:86px}
+body.pc .mem{width:124px;height:84px;grid-template-columns:42px 1fr}body.pc .mem .pt{width:42px;height:42px}body.pc .mem .mn{font-size:18px}body.pc .mem .mr{font-size:13px}
+body.pc .wpn.rb{min-width:96px;height:84px}body.pc .wpn .ic{font-size:24px}body.pc .wpn .nm{font-size:15px}
+body.pc #codeLog{width:380px;font-size:14px}
+body.pc #hint{font-size:18px}body.pc #toast{font-size:19px}body.pc #banner .b1{font-size:22px}body.pc #banner .b2{font-size:58px}
+body.pc .panel{width:560px;font-size:17px}body.pc .panel.wide{width:1000px}body.pc .btn{font-size:20px;padding:15px}
+body.pc .logo{font-size:110px}body.pc .logoimg{width:820px}body.pc .sub{font-size:26px}body.pc .menu{width:400px}
+body.pc #spotCard{width:520px}body.pc #spotCard .tt{font-size:22px}body.pc #spotCard .tb{font-size:17px}
+body.pc .tcard{width:480px}body.pc .tt{font-size:24px}body.pc .tb{font-size:17px}
 </style>
 </head>
 <body>
@@ -299,17 +313,14 @@ padding:8px 14px;font-size:14px;pointer-events:none;white-space:nowrap;max-width
     <div class="foot">겜타즈 2027 · 2026 saaskr 게임 어워드 · 효과음 Kenney.nl (CC0)</div>
   </section>
 
-  <!-- 하는 법 -->
-  <section id="scrHow" class="scr hidden">
-    <div class="panel wide">
-      <h2>하는 법</h2>
-      <div class="how">
-        <div class="card"><div class="pic" id="howPic1"></div><b>① 누르면 나가서 쏘기</b><p><span class="tOnly">화면을 누르고 있으면 엄폐물 위로 나와 자동 사격.<br>손가락을 끌면 조준점이 움직여요.</span><span class="mOnly">마우스 왼쪽을 누르고 있으면 엄폐물 위로 나와 자동 사격.</span></p></div>
-        <div class="card"><div class="pic glitchy" id="howPic2"></div><b>② 떼면 숨기 · 재장전</b><p>빨간 예고 원이 뜨면 손을 떼서 숨으세요.<br>달려오는 버그와 관통 미사일은 숨어도 맞으니 쏴서 막아요.</p></div>
-        <div class="card"><div class="pic wp" id="howPic3"></div><b>③ 3인 분대</b><p>도트(연사) · 렉스(산탄) · 핀(저격)<br>아이콘으로 조작할 캐릭터를 바꾸면 나머지는 알아서 쏴요.</p></div>
-      </div>
-      <button class="btn pri" id="btnHowGo">시작하기</button>
-      <button class="btn ghost" id="btnHowSkip">건너뛰기</button>
+  <!-- 처음 한 번: 튜토리얼 권유 -->
+  <section id="scrAskTut" class="scr dim hidden">
+    <div class="panel">
+      <div class="tag">처음이신가요?</div>
+      <h2>튜토리얼을 먼저 해 볼래요?</h2>
+      <p style="margin:0;color:#cfd6c8;font-size:14px;line-height:1.55">크래시 없는 훈련장에서 조작, 분대와 무기, 버그 7종을 하나씩 직접 해 보며 배워요. 3~4분이면 끝나요.<br>끝까지 하면 도전 과제 <b style="color:var(--lime)">"훈련 수료"</b>를 받아요.</p>
+      <button class="btn pri" id="btnAskTutYes">튜토리얼 하기</button>
+      <button class="btn" id="btnAskTutNo">바로 시작</button>
     </div>
   </section>
 
@@ -499,6 +510,20 @@ const DAILY_SEED = hashStr('bughunter-' + TODAY_KEY);
 const IS_TOUCH = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || (navigator.maxTouchPoints > 0 && 'ontouchstart' in window);
 if (IS_TOUCH) document.body.classList.add('touch');
 
+// PC는 1920×1080 기준 화면을 창 크기에 맞게 통째로 확대·축소 (남는 곳은 검은 여백)
+const VIEW = { pc: !IS_TOUCH, w: 1920, h: 1080, s: 1, ox: 0, oy: 0,
+  fit() {
+    const app = document.getElementById('app');
+    if (!this.pc) { this.w = window.innerWidth; this.h = window.innerHeight; this.s = 1; this.ox = this.oy = 0; if (app) app.style.cssText = ''; return; }
+    this.w = 1920; this.h = 1080;
+    this.s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    this.ox = (window.innerWidth - 1920 * this.s) / 2; this.oy = (window.innerHeight - 1080 * this.s) / 2;
+    if (app) app.style.cssText = `width:1920px;height:1080px;inset:auto;left:0;top:0;transform-origin:0 0;transform:translate(${this.ox}px,${this.oy}px) scale(${this.s})`;
+  },
+  x(cx) { return (cx - this.ox) / this.s; }, y(cy) { return (cy - this.oy) / this.s; }, // 화면 좌표 → 게임 좌표
+  pr() { return Math.min((window.devicePixelRatio || 1) * this.s, 2); }, // 실제로 보이는 크기에 맞춘 해상도
+};
+if (VIEW.pc) document.body.classList.add('pc');
 const settings = Object.assign({ sound: true, sfx: 0.8, music: 0.6, reduceFlash: false, quality: 'auto' }, Store.get('settings', {}));
 function saveSettings() { Store.set('settings', settings); }
 
@@ -720,7 +745,7 @@ function gunCanvas(stripe) {
   return c;
 }
 const ASSET_KEY = { basic: 'bug_basic', clone: 'bug_clone', mini: 'bug_mini', ghost: 'bug_ghost', e404: 'bug_404', loop: 'bug_loop', throw: 'bug_throw' };
-function bugImgCanvas(type) { // DOM용 (하는 법/크래시 화면)
+function bugImgCanvas(type) { // DOM용 (크래시 화면)
   const url = ASSETS[ASSET_KEY[type]];
   if (url) { const img = new Image(); img.src = url; img.className = 'asset'; return img; }
   const src = bugCanvas(type, 0);
@@ -1145,8 +1170,9 @@ const FX = {
     this.scale = this.scale > 0.8 ? 0.75 : 0.5; this.resize(); return true;
   },
   resize() {
-    const w = window.innerWidth, h = window.innerHeight;
-    const pr = this.basePR * this.scale;
+    VIEW.fit();
+    const w = VIEW.w, h = VIEW.h;
+    const pr = (VIEW.pc ? VIEW.pr() : this.basePR) * this.scale;
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
     const v = new THREE.Vector2(); this.renderer.getDrawingBufferSize(v);
@@ -1809,9 +1835,6 @@ const Game = {
 
   init() {
     buildTextures(); initGeo();
-    // 하는 법 ③: 분대 얼굴
-    const hp = $('#howPic3');
-    if (hp) IMG.portrait.forEach((im) => { const c = document.createElement('canvas'); c.width = c.height = 64; const d = () => { const g = c.getContext('2d'); g.imageSmoothingEnabled = im instanceof HTMLImageElement; g.drawImage(im, 0, 0, 64, 64); }; if (im instanceof HTMLImageElement && !im.complete) im.onload = d; else d(); hp.append(c); });
     FX.init($('#gl'));
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(70, 1, 0.1, 400);
@@ -1832,7 +1855,8 @@ const Game = {
     requestAnimationFrame(loop);
   },
   resize() {
-    this.W = window.innerWidth; this.H = window.innerHeight;
+    VIEW.fit();
+    this.W = VIEW.w; this.H = VIEW.h;
     const a = this.W / this.H;
     this.camera.aspect = a;
     // 세로 화면이면 시야각을 넓혀 보정
@@ -1840,7 +1864,7 @@ const Game = {
     this.camera.updateProjectionMatrix();
     this.tanHalf = Math.tan((this.camera.fov * Math.PI) / 360);
     FX.resize();
-    const pr = Math.min(window.devicePixelRatio || 1, 2);
+    const pr = VIEW.pc ? VIEW.pr() : Math.min(window.devicePixelRatio || 1, 2);
     this.ov.width = this.W * pr; this.ov.height = this.H * pr; this.g2.setTransform(pr, 0, 0, pr, 0, 0);
     if (!this.ret.x) { this.ret.x = this.W / 2; this.ret.y = this.H * 0.42; }
     this.ret.x = clamp(this.ret.x, 0, this.W); this.ret.y = clamp(this.ret.y, 0, this.H);
@@ -1879,19 +1903,21 @@ const Game = {
       if (this.ptr.id != null && this.ptr.down && e.pointerType === 'touch') return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       this.ptr.id = e.pointerId; this.ptr.down = true; this.ptr.has = true; this.ptr.mouse = e.pointerType === 'mouse';
-      this.ptr.lx = e.clientX; this.ptr.ly = e.clientY;
-      if (this.ptr.mouse) { this.ret.x = e.clientX; this.ret.y = e.clientY; }
-      else this.taps.push({ x: e.clientX, y: e.clientY, t: 0 });
+      const ex = VIEW.x(e.clientX), ey = VIEW.y(e.clientY);
+      this.ptr.lx = ex; this.ptr.ly = ey;
+      if (this.ptr.mouse) { this.ret.x = ex; this.ret.y = ey; }
+      else this.taps.push({ x: ex, y: ey, t: 0 });
       e.preventDefault();
     });
     window.addEventListener('pointermove', (e) => {
-      if (e.pointerType === 'mouse') { this.ret.x = e.clientX; this.ret.y = e.clientY; this.ptr.has = true; this.ptr.mouse = true; return; }
+      const ex = VIEW.x(e.clientX), ey = VIEW.y(e.clientY);
+      if (e.pointerType === 'mouse') { this.ret.x = clamp(ex, 0, this.W); this.ret.y = clamp(ey, 0, this.H); this.ptr.has = true; this.ptr.mouse = true; return; }
       if (e.pointerId !== this.ptr.id) return;
       // 터치: 손가락이 조준점을 가리지 않게, 끈 만큼 조준점이 움직임
       const k = 1.35;
-      this.ret.x = clamp(this.ret.x + (e.clientX - this.ptr.lx) * k, 8, this.W - 8);
-      this.ret.y = clamp(this.ret.y + (e.clientY - this.ptr.ly) * k, 8, this.H - 8);
-      this.ptr.lx = e.clientX; this.ptr.ly = e.clientY;
+      this.ret.x = clamp(this.ret.x + (ex - this.ptr.lx) * k, 8, this.W - 8);
+      this.ret.y = clamp(this.ret.y + (ey - this.ptr.ly) * k, 8, this.H - 8);
+      this.ptr.lx = ex; this.ptr.ly = ey;
     });
     const up = (e) => { if (e.pointerId === this.ptr.id) { this.ptr.down = false; this.ptr.id = null; this.release(); } };
     window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
@@ -3119,7 +3145,7 @@ const Game = {
 
 // ==== 08_ui.js ====
 // ---------- 화면 · HUD ----------
-const SCREENS = ['#scrTitle', '#scrHow', '#scrDiff', '#scrDex', '#scrPause', '#scrSettings', '#scrRecords', '#scrClear', '#scrCrash', '#scrResult'];
+const SCREENS = ['#scrTitle', '#scrAskTut', '#scrDiff', '#scrDex', '#scrPause', '#scrSettings', '#scrRecords', '#scrClear', '#scrCrash', '#scrResult'];
 const CHALLENGES = [
   ['release', '정식 출시 등급 받기'],
   ['nocrash', '무사고 (크래시 0회로 클리어)'],
@@ -3129,6 +3155,7 @@ const CHALLENGES = [
   ['boss90', '보스를 1분 30초 안에 정상화'],
   ['hard', '난이도 상 클리어'],
   ['hardrelease', '난이도 상에서 정식 출시'],
+  ['tutorial', '훈련 수료 (튜토리얼 완료)'],
 ];
 // ---------- 도감 · 안내 카드 내용 ----------
 const DEX = [
@@ -3168,8 +3195,6 @@ const UI = {
   init() {
     $('#verBadge').textContent = DAILY_VER;
     if (ASSETS.logo) $('#logo').innerHTML = `<img class="logoimg" src="${ASSETS.logo}" alt="BUG HUNTER">`;
-    const c1 = bugImgCanvas('basic'); $('#howPic1').append(c1); const hand = document.createElement('div'); hand.className = 'hand'; hand.textContent = IS_TOUCH ? '👆' : '🖱️'; $('#howPic1').append(hand);
-    $('#howPic2').append(bugImgCanvas('throw'));
     $('#crashBug').append(bugImgCanvas('basic'));
     const click = (id, fn) => $(id).addEventListener('click', (e) => { SND.init(); SND.play('click'); fn(e); });
     click('#btnStart', () => this.start(false));
@@ -3192,8 +3217,8 @@ const UI = {
     window.addEventListener('orientationchange', () => setTimeout(() => this.checkRotate(), 200));
     this.checkRotate();
     click('#btnSettings', () => this.showSettings('#scrTitle'));
-    click('#btnHowGo', () => this.afterHow());
-    click('#btnHowSkip', () => this.afterHow());
+    click('#btnAskTutYes', () => { Store.set('tutAsked', true); this.only(); Game.newRun(false, 'tutorial'); });
+    click('#btnAskTutNo', () => { Store.set('tutAsked', true); this.showDiff(); });
     click('#btnDiffBack', () => this.only('#scrTitle'));
     $$('.dcard').forEach((b) => b.addEventListener('click', () => {
       SND.init();
@@ -3239,10 +3264,10 @@ const UI = {
   },
   start(daily) {
     this.pendingDaily = daily;
-    if (!Store.get('seenHow', false)) { this.only('#scrHow'); return; }
-    this.afterHow();
+    // 처음 한 번만: 튜토리얼을 먼저 할지 물어봄
+    if (!Store.get('tutAsked', false) && !Store.get('tutDone', false) && !this.askedMem) { this.askedMem = true; this.only('#scrAskTut'); return; }
+    this.showDiff();
   },
-  afterHow() { Store.set('seenHow', true); this.showDiff(); },
   // 상 난이도 잠금: 중(또는 상)을 한 번 깨면 열림. 저장이 막힌 환경에서는 이번 접속 동안만 기억
   hardOpenMem: false,
   hardOpen() { return this.hardOpenMem || !!Store.get('records', {}).hardOpen; },
@@ -3644,7 +3669,7 @@ const Tut = {
     if (Game.state === 'tutor') Game.state = 'play';
   },
   // ----- 화면 위치 -----
-  el(sel, pad = 6) { const e = $(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 }; },
+  el(sel, pad = 6) { const e = $(sel); if (!e) return null; const r = e.getBoundingClientRect(), s = VIEW.s; return { x: VIEW.x(r.left) - pad, y: VIEW.y(r.top) - pad, w: r.width / s + pad * 2, h: r.height / s + pad * 2 }; },
   coverBar() { const W = Game.W, H = Game.H, w = Math.min(220, W * 0.5); return { x: (W - w) / 2 - 8, y: H - (W < H ? 150 : 96) - 20, w: w + 16, h: 34 }; },
   around(x, y, r) { return { x: x - r, y: y - r, w: r * 2, h: r * 2 }; },
   bugRect(b) { return b && b.alive && b.onScreen ? this.around(b.sx, b.sy, Math.max(40, b.sr * 1.5)) : null; },
@@ -3737,6 +3762,8 @@ const Tut = {
   },
   finish() {
     Store.set('tutDone', true);
+    const rec = Store.get('records', {}); rec.ch = rec.ch || {};
+    if (!rec.ch.tutorial) { rec.ch.tutorial = true; Store.set('records', rec); SND.play('unlock'); setTimeout(() => UI.toast('🏆 도전 과제 달성: 훈련 수료'), 300); }
     this.stop();
     Game.toTitle();
     UI.pendingDaily = false; UI.showDiff();

@@ -1,5 +1,5 @@
 // ---------- 화면 · HUD ----------
-const SCREENS = ['#scrTitle', '#scrHow', '#scrDiff', '#scrDex', '#scrPause', '#scrSettings', '#scrRecords', '#scrClear', '#scrCrash', '#scrResult'];
+const SCREENS = ['#scrTitle', '#scrAskTut', '#scrDiff', '#scrDex', '#scrPause', '#scrSettings', '#scrRecords', '#scrClear', '#scrCrash', '#scrResult'];
 const CHALLENGES = [
   ['release', '정식 출시 등급 받기'],
   ['nocrash', '무사고 (크래시 0회로 클리어)'],
@@ -9,6 +9,7 @@ const CHALLENGES = [
   ['boss90', '보스를 1분 30초 안에 정상화'],
   ['hard', '난이도 상 클리어'],
   ['hardrelease', '난이도 상에서 정식 출시'],
+  ['tutorial', '훈련 수료 (튜토리얼 완료)'],
 ];
 // ---------- 도감 · 안내 카드 내용 ----------
 const DEX = [
@@ -48,8 +49,6 @@ const UI = {
   init() {
     $('#verBadge').textContent = DAILY_VER;
     if (ASSETS.logo) $('#logo').innerHTML = `<img class="logoimg" src="${ASSETS.logo}" alt="BUG HUNTER">`;
-    const c1 = bugImgCanvas('basic'); $('#howPic1').append(c1); const hand = document.createElement('div'); hand.className = 'hand'; hand.textContent = IS_TOUCH ? '👆' : '🖱️'; $('#howPic1').append(hand);
-    $('#howPic2').append(bugImgCanvas('throw'));
     $('#crashBug').append(bugImgCanvas('basic'));
     const click = (id, fn) => $(id).addEventListener('click', (e) => { SND.init(); SND.play('click'); fn(e); });
     click('#btnStart', () => this.start(false));
@@ -72,8 +71,8 @@ const UI = {
     window.addEventListener('orientationchange', () => setTimeout(() => this.checkRotate(), 200));
     this.checkRotate();
     click('#btnSettings', () => this.showSettings('#scrTitle'));
-    click('#btnHowGo', () => this.afterHow());
-    click('#btnHowSkip', () => this.afterHow());
+    click('#btnAskTutYes', () => { Store.set('tutAsked', true); this.only(); Game.newRun(false, 'tutorial'); });
+    click('#btnAskTutNo', () => { Store.set('tutAsked', true); this.showDiff(); });
     click('#btnDiffBack', () => this.only('#scrTitle'));
     $$('.dcard').forEach((b) => b.addEventListener('click', () => {
       SND.init();
@@ -119,10 +118,10 @@ const UI = {
   },
   start(daily) {
     this.pendingDaily = daily;
-    if (!Store.get('seenHow', false)) { this.only('#scrHow'); return; }
-    this.afterHow();
+    // 처음 한 번만: 튜토리얼을 먼저 할지 물어봄
+    if (!Store.get('tutAsked', false) && !Store.get('tutDone', false) && !this.askedMem) { this.askedMem = true; this.only('#scrAskTut'); return; }
+    this.showDiff();
   },
-  afterHow() { Store.set('seenHow', true); this.showDiff(); },
   // 상 난이도 잠금: 중(또는 상)을 한 번 깨면 열림. 저장이 막힌 환경에서는 이번 접속 동안만 기억
   hardOpenMem: false,
   hardOpen() { return this.hardOpenMem || !!Store.get('records', {}).hardOpen; },
