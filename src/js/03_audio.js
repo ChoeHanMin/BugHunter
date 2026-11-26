@@ -78,7 +78,7 @@ const SND = {
         this.tone(2637, 0.05, 'triangle', 0.05, 2093, now + 0.035);
         break;
       case 'spread': // 리팩터: 묵직한 확산음 + 7발 틱
-        if (this.sample('sfx_spread', 1)) break;
+        if (this.sample('sfx_spread', 0.95)) break;
         this.noiseHit(0.16, 0.32, 'bandpass', 1400);
         this.tone(760, 0.16, 'sawtooth', 0.13, 150);
         this.tone(130, 0.18, 'sine', 0.4, 42);
@@ -104,7 +104,7 @@ const SND = {
       case 'overheat': this.noiseHit(1.2, 0.3, 'highpass', 3000); this.tone(900, 0.5, 'sawtooth', 0.12, 120); this.tone(1200, 0.08, 'square', 0.1, null, now + 0.02); break; // 치이익
       case 'cool': this.tone(1318, 0.1, 'triangle', 0.14); this.tone(1976, 0.18, 'triangle', 0.12, null, now + 0.08); break;
       case 'jam': this.tone(180, 0.04, 'square', 0.12, 90); this.noiseHit(0.03, 0.1, 'bandpass', 1200); break; // 딸깍(헛방)
-      case 'rifle': if (this.sample('sfx_shot', 0.8)) break; this.noiseHit(0.018, 0.14, 'highpass', 5000); this.tone(1500, 0.045, 'square', 0.06, 600); this.tone(160, 0.05, 'sine', 0.14, 60); break; // 연사 한 발
+      case 'rifle': if (this.sample('sfx_shot', 0.42)) break; this.noiseHit(0.018, 0.14, 'highpass', 5000); this.tone(1500, 0.045, 'square', 0.06, 600); this.tone(160, 0.05, 'sine', 0.14, 60); break; // 연사 한 발
       case 'snipe': if (this.sample('sfx_snipe', 1)) break; this.noiseHit(0.05, 0.35, 'highpass', 3000); this.tone(2200, 0.25, 'sawtooth', 0.12, 300); this.tone(110, 0.3, 'sine', 0.45, 35); break; // 저격
       case 'tick': this.tone(2600, 0.025, 'square', 0.035); break; // 맞힘
       case 'boom': this.noiseHit(0.4, 0.4, 'lowpass', 700); this.tone(90, 0.35, 'sine', 0.4, 30); break; // 미사일 격추

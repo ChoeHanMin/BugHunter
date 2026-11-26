@@ -38,6 +38,11 @@
 목표: 하 = 서툰 봇이 크래시 없이 여유 있게 / 중 = 서툰 봇이 가끔 맞지만 깸 / 상 = 서툰 봇은 못 깨고 정확한 봇은 겨우 깸.
 봇은 화면을 "보는" 게 아니라 게임 속 숫자를 읽기 때문에 사람보다 유리해요. 그래서 봇 결과보다 한 단계 쉽게 맞추고, 사람 테스트 결과로 다시 조정해요.
 
+## 효과음 출처
+
+- 연사·산탄·저격 발사음: **Kenney "Sci-Fi Sounds" (CC0, www.kenney.nl)** — `laserSmall_001`(연사), `laserRetro_004`+`impactMetal_004` 섞음(산탄), `laserLarge_003`(저격)을 잘라서 `assets/sfx_shot.mp3`, `sfx_spread.mp3`, `sfx_snipe.mp3`로 사용. 라이선스 원문은 `assets/kenney_sci-fi-sounds_License.txt`.
+- 그 밖의 효과음과 음악은 Web Audio로 직접 합성.
+
 ## 빌드
 
 ```bash
