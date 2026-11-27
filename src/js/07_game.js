@@ -81,7 +81,7 @@ const Game = {
     this.camera.updateProjectionMatrix();
     this.tanHalf = Math.tan((this.camera.fov * Math.PI) / 360);
     FX.resize();
-    const pr = VIEW.pc ? VIEW.pr() : Math.min(window.devicePixelRatio || 1, 2);
+    const pr = VIEW.s !== 1 ? VIEW.pr() : Math.min(window.devicePixelRatio || 1, 2);
     this.ov.width = this.W * pr; this.ov.height = this.H * pr; this.g2.setTransform(pr, 0, 0, pr, 0, 0);
     if (!this.ret.x) { this.ret.x = this.W / 2; this.ret.y = this.H * 0.42; }
     this.ret.x = clamp(this.ret.x, 0, this.W); this.ret.y = clamp(this.ret.y, 0, this.H);

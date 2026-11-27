@@ -83,8 +83,6 @@ padding:8px 14px;font-size:14px;pointer-events:none;white-space:nowrap;max-width
 .menu{width:min(300px,86vw);display:flex;flex-direction:column;gap:10px;margin-top:10px}
 .row2{display:flex;gap:10px}
 .foot{position:absolute;bottom:calc(10px + env(safe-area-inset-bottom));font-size:11px;color:#7d8478;font-family:var(--mono)}
-.rot{font-size:12px;color:var(--yel);display:none}
-@media (orientation:portrait) and (pointer:coarse){.rot{display:block}}
 .how{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 @media (max-width:560px){.how{grid-template-columns:1fr}}
 .card{background:#151913;border:2px solid #2f342c;padding:10px;text-align:center;font-size:13px}
@@ -218,8 +216,6 @@ padding:8px 14px;font-size:14px;pointer-events:none;white-space:nowrap;max-width
 .dexh{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--yel);margin:10px 0 4px}
 .chip{display:inline-block;font-size:11px;padding:0 5px;border:1px solid currentColor;margin-left:4px}
 /* 폰 가로 안내 */
-#rotate{position:absolute;inset:0;z-index:40;background:#0E100D;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:16px}
-#rotate .ri{font-size:46px}#rotate b{font-size:20px;color:var(--lime)}#rotate p{margin:0;color:#cfd6c8;font-size:14px;line-height:1.5}
 /* 추천 표시 */
 .mem.suggest,.wpn.rb.suggest{animation:sug .6s infinite steps(2)}
 @keyframes sug{50%{border-color:#fff;box-shadow:0 0 14px rgba(255,255,255,.55)}}
@@ -308,7 +304,6 @@ body.pc .tcard{width:480px}body.pc .tt{font-size:24px}body.pc .tb{font-size:17px
         <button class="btn sm" id="btnSettings">설정</button>
       </div>
     </div>
-    <div class="rot" id="rotHint">📱↻ 가로 화면을 권장해요</div>
     <div class="sndhint" id="sndHint">🔊 화면을 한 번 누르면 소리가 나와요</div>
     <div class="foot">겜타즈 2027 · 2026 saaskr 게임 어워드 · 효과음 Kenney.nl (CC0)</div>
   </section>
@@ -438,13 +433,6 @@ body.pc .tcard{width:480px}body.pc .tt{font-size:24px}body.pc .tb{font-size:17px
     </div>
   </div>
 
-  <!-- 폰 가로 화면 안내 -->
-  <div id="rotate" class="hidden">
-    <div class="ri">📱↻</div>
-    <b>세로로 돌려 주세요</b>
-    <p>폰에서는 세로 화면에 맞춰져 있어요.<br>가로 큰 화면은 PC에서 즐겨 주세요.</p>
-  </div>
-
   <!-- 튜토리얼: 설명하는 부분만 컬러, 나머지는 흑백 -->
   <div id="spot" class="hidden">
     <div class="spane"></div><div class="spane"></div><div class="spane"></div><div class="spane"></div>
@@ -514,7 +502,14 @@ if (IS_TOUCH) document.body.classList.add('touch');
 const VIEW = { pc: !IS_TOUCH, w: 1920, h: 1080, s: 1, ox: 0, oy: 0,
   fit() {
     const app = document.getElementById('app');
-    if (!this.pc) { this.w = window.innerWidth; this.h = window.innerHeight; this.s = 1; this.ox = this.oy = 0; if (app) app.style.cssText = ''; return; }
+    if (!this.pc) {
+      // 폰을 가로로 눕히거나 사이트 안의 작은 가로 창: 높이 500 기준으로 확대·축소해 그대로 플레이 (돌려 달라는 안내 없음)
+      const iw = window.innerWidth, ih = window.innerHeight;
+      this.s = iw > ih && ih < 500 ? ih / 500 : 1;
+      this.w = Math.round(iw / this.s); this.h = Math.round(ih / this.s); this.ox = this.oy = 0;
+      if (app) app.style.cssText = this.s === 1 ? '' : `width:${this.w}px;height:${this.h}px;inset:auto;left:0;top:0;transform-origin:0 0;transform:scale(${this.s})`;
+      return;
+    }
     this.w = 1920; this.h = 1080;
     this.s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
     this.ox = (window.innerWidth - 1920 * this.s) / 2; this.oy = (window.innerHeight - 1080 * this.s) / 2;
@@ -1172,7 +1167,7 @@ const FX = {
   resize() {
     VIEW.fit();
     const w = VIEW.w, h = VIEW.h;
-    const pr = (VIEW.pc ? VIEW.pr() : this.basePR) * this.scale;
+    const pr = (VIEW.s !== 1 ? VIEW.pr() : this.basePR) * this.scale;
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
     const v = new THREE.Vector2(); this.renderer.getDrawingBufferSize(v);
@@ -1864,7 +1859,7 @@ const Game = {
     this.camera.updateProjectionMatrix();
     this.tanHalf = Math.tan((this.camera.fov * Math.PI) / 360);
     FX.resize();
-    const pr = VIEW.pc ? VIEW.pr() : Math.min(window.devicePixelRatio || 1, 2);
+    const pr = VIEW.s !== 1 ? VIEW.pr() : Math.min(window.devicePixelRatio || 1, 2);
     this.ov.width = this.W * pr; this.ov.height = this.H * pr; this.g2.setTransform(pr, 0, 0, pr, 0, 0);
     if (!this.ret.x) { this.ret.x = this.W / 2; this.ret.y = this.H * 0.42; }
     this.ret.x = clamp(this.ret.x, 0, this.W); this.ret.y = clamp(this.ret.y, 0, this.H);
@@ -3213,9 +3208,6 @@ const UI = {
     const tutTap = (e) => { e.preventDefault(); e.stopPropagation(); Tut.tap(); };
     $('#spotCatch').addEventListener('pointerdown', tutTap);
     $('#spotCard').addEventListener('pointerdown', tutTap);
-    window.addEventListener('resize', () => this.checkRotate());
-    window.addEventListener('orientationchange', () => setTimeout(() => this.checkRotate(), 200));
-    this.checkRotate();
     click('#btnSettings', () => this.showSettings('#scrTitle'));
     click('#btnAskTutYes', () => { Store.set('tutAsked', true); this.only(); Game.newRun(false, 'tutorial'); });
     click('#btnAskTutNo', () => { Store.set('tutAsked', true); this.showDiff(); });
@@ -3275,12 +3267,6 @@ const UI = {
   soundHint() {
     const el = $('#sndHint'); if (!el) return;
     el.classList.toggle('hidden', !settings.sound || SND.running());
-  },
-  // ----- 폰 가로 화면: 세로로 돌려 달라고 안내 -----
-  checkRotate() {
-    const land = IS_TOUCH && window.innerWidth > window.innerHeight && window.innerHeight < 600;
-    $('#rotate').classList.toggle('hidden', !land);
-    if (land && Game.state === 'play') this.pause();
   },
   // ----- 도감 -----
   dexSeen(t) {

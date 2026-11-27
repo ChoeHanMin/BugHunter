@@ -46,7 +46,14 @@ if (IS_TOUCH) document.body.classList.add('touch');
 const VIEW = { pc: !IS_TOUCH, w: 1920, h: 1080, s: 1, ox: 0, oy: 0,
   fit() {
     const app = document.getElementById('app');
-    if (!this.pc) { this.w = window.innerWidth; this.h = window.innerHeight; this.s = 1; this.ox = this.oy = 0; if (app) app.style.cssText = ''; return; }
+    if (!this.pc) {
+      // 폰을 가로로 눕히거나 사이트 안의 작은 가로 창: 높이 500 기준으로 확대·축소해 그대로 플레이 (돌려 달라는 안내 없음)
+      const iw = window.innerWidth, ih = window.innerHeight;
+      this.s = iw > ih && ih < 500 ? ih / 500 : 1;
+      this.w = Math.round(iw / this.s); this.h = Math.round(ih / this.s); this.ox = this.oy = 0;
+      if (app) app.style.cssText = this.s === 1 ? '' : `width:${this.w}px;height:${this.h}px;inset:auto;left:0;top:0;transform-origin:0 0;transform:scale(${this.s})`;
+      return;
+    }
     this.w = 1920; this.h = 1080;
     this.s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
     this.ox = (window.innerWidth - 1920 * this.s) / 2; this.oy = (window.innerHeight - 1080 * this.s) / 2;

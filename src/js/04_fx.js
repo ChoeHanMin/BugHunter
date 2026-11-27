@@ -63,7 +63,7 @@ const FX = {
   resize() {
     VIEW.fit();
     const w = VIEW.w, h = VIEW.h;
-    const pr = (VIEW.pc ? VIEW.pr() : this.basePR) * this.scale;
+    const pr = (VIEW.s !== 1 ? VIEW.pr() : this.basePR) * this.scale;
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
     const v = new THREE.Vector2(); this.renderer.getDrawingBufferSize(v);

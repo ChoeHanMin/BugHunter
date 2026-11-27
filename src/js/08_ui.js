@@ -67,9 +67,6 @@ const UI = {
     const tutTap = (e) => { e.preventDefault(); e.stopPropagation(); Tut.tap(); };
     $('#spotCatch').addEventListener('pointerdown', tutTap);
     $('#spotCard').addEventListener('pointerdown', tutTap);
-    window.addEventListener('resize', () => this.checkRotate());
-    window.addEventListener('orientationchange', () => setTimeout(() => this.checkRotate(), 200));
-    this.checkRotate();
     click('#btnSettings', () => this.showSettings('#scrTitle'));
     click('#btnAskTutYes', () => { Store.set('tutAsked', true); this.only(); Game.newRun(false, 'tutorial'); });
     click('#btnAskTutNo', () => { Store.set('tutAsked', true); this.showDiff(); });
@@ -129,12 +126,6 @@ const UI = {
   soundHint() {
     const el = $('#sndHint'); if (!el) return;
     el.classList.toggle('hidden', !settings.sound || SND.running());
-  },
-  // ----- 폰 가로 화면: 세로로 돌려 달라고 안내 -----
-  checkRotate() {
-    const land = IS_TOUCH && window.innerWidth > window.innerHeight && window.innerHeight < 600;
-    $('#rotate').classList.toggle('hidden', !land);
-    if (land && Game.state === 'play') this.pause();
   },
   // ----- 도감 -----
   dexSeen(t) {
